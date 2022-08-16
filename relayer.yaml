@@ -1,0 +1,30 @@
+Log:
+  Level: info
+  Path: /tmp/relayer/log/relayer.log
+  LogToConsole: true
+  LogToFile: true
+DB:
+  Badger:
+    Dir: /tmp/relayer/badger
+    ValueDir: /tmp/relayer/badger
+Endpoint:
+  DisabledEndpoints:
+    - eth_protocolVersion
+RpcNode:
+  GoEthereum:
+    HTTPHost: localhost
+    HTTPPort: 8545
+    HTTPVirtualHosts:
+      - localhost
+    HTTPModules:
+      - "net"
+      - "web3"
+      - "eth"
+    WSHost: localhost
+    WSPort: 8546
+    WSModules:
+      - "net"
+      - "web3"
+      - "eth"
+  JsonRpc2:
+    HTTPPort: 8545
