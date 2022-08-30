@@ -1,12 +1,20 @@
-Log:
-  Level: info
+Logger:
+  Level: error
   Path: /tmp/relayer/log/relayer.log
   LogToConsole: true
   LogToFile: true
 DB:
   Badger:
-    Dir: /tmp/relayer/badger
-    ValueDir: /tmp/relayer/badger
+      GCIntervalSeconds: 10
+      index:
+        MaxJumps: 1000
+        MaxRangeScanners: 4
+        MaxValueFetchers: 4
+        KeysOnly: false
+      Options:
+        Dir: /tmp/relayer/data
+        InMemory: false
+        DetectConflicts: false
 Endpoint:
   DisabledEndpoints:
     - eth_protocolVersion
@@ -26,5 +34,3 @@ RpcNode:
       - "net"
       - "web3"
       - "eth"
-  JsonRpc2:
-    HTTPPort: 8545

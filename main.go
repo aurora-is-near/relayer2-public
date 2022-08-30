@@ -2,8 +2,10 @@ package main
 
 import (
 	"aurora-relayer-go-common/cmd"
+	"aurora-relayer-go-common/db"
 	"aurora-relayer-go-common/db/badger"
 	commonEndpoint "aurora-relayer-go-common/endpoint"
+	"aurora-relayer-go-common/endpoint/preprocessor"
 	goEthereum "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum"
 	"aurora-relayer-go/endpoint"
 	"aurora-relayer-go/indexer"
@@ -27,20 +29,34 @@ func main() {
 
 	c.AddCommand(cmd.StartCmd(func(cmd *cobra.Command, args []string) {
 
-		dbHandler, err := badger.New()
+		bh, err := badger.NewBlockHandler()
 		if err != nil {
 			os.Exit(1)
 		}
-		defer dbHandler.Close()
+		fh, err := badger.NewFilterHandler()
+		if err != nil {
+			os.Exit(1)
+		}
 
-		indxr := indexer.New(dbHandler)
+		handler := db.StoreHandler{
+			BlockHandler:  bh,
+			FilterHandler: fh,
+		}
+
+		defer handler.Close()
+
+		indxr := indexer.New(handler)
 		err = indxr.Start()
 		if err != nil {
 			os.Exit(1)
 		}
 		defer indxr.Stop()
 
-		baseEndpoint := commonEndpoint.New(&dbHandler)
+		baseEndpoint := commonEndpoint.New(handler)
+		baseEndpoint.WithPreprocessor(preprocessor.NewEnableDisable())
+		baseEndpoint.WithPreprocessor(preprocessor.NewProxy())
+
+		ethEndpoint := commonEndpoint.NewEth(baseEndpoint)
 
 		rpcNode, err := goEthereum.New()
 		if err != nil {
@@ -51,7 +67,7 @@ func main() {
 		rpcAPIs = append(rpcAPIs, rpc.API{
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   commonEndpoint.NewEth(baseEndpoint),
+			Service:   commonEndpoint.NewEthPreprocessorAware(ethEndpoint),
 		})
 		rpcAPIs = append(rpcAPIs, rpc.API{
 			Namespace: "web3",
@@ -63,8 +79,12 @@ func main() {
 			Version:   "1.0",
 			Service:   endpoint.NewCustomEth(baseEndpoint),
 		})
+
 		rpcNode.RegisterAPIs(rpcAPIs)
-		rpcNode.Start()
+		err = rpcNode.Start()
+		if err != nil {
+			os.Exit(1)
+		}
 		defer rpcNode.Close()
 
 		sig := make(chan os.Signal)

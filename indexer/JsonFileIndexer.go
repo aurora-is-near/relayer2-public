@@ -11,8 +11,8 @@ const (
 )
 
 type JsonFileIndexer struct {
-	dbHandler db.Handler
-	logger    *log.Log
+	dbHandler *db.Handler
+	logger    *log.Logger
 }
 
 func New(dbh db.Handler) *JsonFileIndexer {
@@ -20,7 +20,7 @@ func New(dbh db.Handler) *JsonFileIndexer {
 		panic("DB Handler should be initialized")
 	}
 
-	logger := log.New()
+	logger := log.Log()
 	conf := DefaultConfig()
 	sub := viper.Sub(configPath)
 	if sub != nil {
@@ -31,7 +31,7 @@ func New(dbh db.Handler) *JsonFileIndexer {
 	}
 
 	return &JsonFileIndexer{
-		dbHandler: dbh,
+		dbHandler: &dbh,
 		logger:    logger,
 	}
 }
