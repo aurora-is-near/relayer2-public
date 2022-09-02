@@ -1,25 +1,28 @@
-Logger:
-  Level: error
-  Path: /tmp/relayer/log/relayer.log
-  LogToConsole: true
-  LogToFile: true
-DB:
-  Badger:
-      GCIntervalSeconds: 10
+logger:
+  level: error
+  path: /tmp/relayer/log/relayer.log
+  logToConsole: true
+  logToFile: true
+db:
+  badger:
+      gcIntervalSeconds: 10
+      iterationTimeoutSeconds: 5
+      iterationMaxItems: 10000
+      logFilterTtlMinutes: 15
       index:
-        MaxJumps: 1000
-        MaxRangeScanners: 4
-        MaxValueFetchers: 4
-        KeysOnly: false
-      Options:
+        maxJumps: 1000
+        maxRangeScanners: 4
+        maxValueFetchers: 4
+        keysOnly: false
+      options:
         Dir: /tmp/relayer/data
         InMemory: false
         DetectConflicts: false
-Endpoint:
-  DisabledEndpoints:
+endpoint:
+  disabledEndpoints:
     - eth_protocolVersion
-RpcNode:
-  GoEthereum:
+rpcNode:
+  geth:
     HTTPHost: localhost
     HTTPPort: 8545
     HTTPVirtualHosts:
@@ -34,3 +37,5 @@ RpcNode:
       - "net"
       - "web3"
       - "eth"
+indexer:
+  JsonFilesPath: "/tmp/relayer/json/"

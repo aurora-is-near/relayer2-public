@@ -6,6 +6,7 @@ import (
 	"aurora-relayer-go-common/db/badger"
 	commonEndpoint "aurora-relayer-go-common/endpoint"
 	"aurora-relayer-go-common/endpoint/preprocessor"
+	"aurora-relayer-go-common/log"
 	goEthereum "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum"
 	"aurora-relayer-go/endpoint"
 	"aurora-relayer-go/indexer"
@@ -29,28 +30,27 @@ func main() {
 
 	c.AddCommand(cmd.StartCmd(func(cmd *cobra.Command, args []string) {
 
+		logger := log.Log()
 		bh, err := badger.NewBlockHandler()
 		if err != nil {
-			os.Exit(1)
+			logger.Fatal().Err(err).Msg("failed to start block handler")
 		}
 		fh, err := badger.NewFilterHandler()
 		if err != nil {
-			os.Exit(1)
+			logger.Fatal().Err(err).Msg("failed to start filter handler")
 		}
 
 		handler := db.StoreHandler{
 			BlockHandler:  bh,
 			FilterHandler: fh,
 		}
-
 		defer handler.Close()
 
-		indxr := indexer.New(handler)
-		err = indxr.Start()
+		indxr, err := indexer.New(handler)
 		if err != nil {
-			os.Exit(1)
+			logger.Fatal().Err(err).Msg("failed to start indexer")
 		}
-		defer indxr.Stop()
+		defer indxr.Close()
 
 		baseEndpoint := commonEndpoint.New(handler)
 		baseEndpoint.WithPreprocessor(preprocessor.NewEnableDisable())
@@ -60,7 +60,7 @@ func main() {
 
 		rpcNode, err := goEthereum.New()
 		if err != nil {
-			os.Exit(1)
+			logger.Fatal().Err(err).Msg("failed to create json-rpc server")
 		}
 
 		var rpcAPIs []rpc.API
@@ -83,7 +83,7 @@ func main() {
 		rpcNode.RegisterAPIs(rpcAPIs)
 		err = rpcNode.Start()
 		if err != nil {
-			os.Exit(1)
+			logger.Fatal().Err(err).Msg("failed to start json-rpc server")
 		}
 		defer rpcNode.Close()
 

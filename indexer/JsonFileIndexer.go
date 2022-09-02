@@ -3,49 +3,33 @@ package indexer
 import (
 	"aurora-relayer-go-common/db"
 	"aurora-relayer-go-common/log"
-	"github.com/spf13/viper"
-)
-
-const (
-	configPath = "Indexer.JsonFileIndexer"
+	"errors"
 )
 
 type JsonFileIndexer struct {
 	dbHandler *db.Handler
 	logger    *log.Logger
+	Config    *Config
 }
 
-func New(dbh db.Handler) *JsonFileIndexer {
+func New(dbh db.Handler) (*JsonFileIndexer, error) {
 	if dbh == nil {
-		panic("DB Handler should be initialized")
+		return nil, errors.New("db handler is not initialized")
 	}
 
 	logger := log.Log()
-	conf := DefaultConfig()
-	sub := viper.Sub(configPath)
-	if sub != nil {
-		if err := sub.Unmarshal(&conf); err != nil {
-			logger.Warn().Err(err).Msgf("failed to parse configuration [%s] from [%s], "+
-				"falling back to defaults", configPath, viper.ConfigFileUsed())
-		}
-	}
+	config := GetConfig()
+
+	// TODO implement indexer
 
 	return &JsonFileIndexer{
 		dbHandler: &dbh,
 		logger:    logger,
-	}
+		Config:    config,
+	}, nil
 }
 
-func (j JsonFileIndexer) Start() error {
+func (j JsonFileIndexer) Close() error {
 	// TODO implement me
-
-	// panic("implement me")
-	return nil
-}
-
-func (j JsonFileIndexer) Stop() error {
-	// TODO implement me
-
-	// panic("implement me")
 	return nil
 }
