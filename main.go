@@ -10,11 +10,12 @@ import (
 	goEthereum "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum"
 	"aurora-relayer-go/endpoint"
 	"aurora-relayer-go/indexer"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/spf13/cobra"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -78,6 +79,13 @@ func main() {
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   endpoint.NewCustomEth(baseEndpoint),
+		})
+
+		eventsEndpoint := endpoint.NewEventsForGoEth(baseEndpoint, rpcNode.EventBroker)
+		rpcAPIs = append(rpcAPIs, rpc.API{
+			Namespace: "eth",
+			Version:   "1.0",
+			Service:   eventsEndpoint,
 		})
 
 		rpcNode.RegisterAPIs(rpcAPIs)
