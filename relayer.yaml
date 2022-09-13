@@ -1,5 +1,5 @@
 logger:
-  level: error
+  level: info
   path: /tmp/relayer/log/relayer.log
   logToConsole: true
   logToFile: true
@@ -38,4 +38,6 @@ rpcNode:
       - "web3"
       - "eth"
 indexer:
-  JsonFilesPath: "/tmp/relayer/json/"
+  sourceFolder: "../borealis-engine-lib/output/refiner"
+  subFolderBatchSize: 10000
+  keepFiles: false

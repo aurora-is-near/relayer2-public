@@ -16,3 +16,6 @@
 
 # JetBrains IDEs
 .idea/*
+
+# Tmp test folder for unit tests
+*/test/**
