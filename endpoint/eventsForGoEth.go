@@ -1,6 +1,7 @@
 package endpoint
 
 import (
+	"aurora-relayer-go-common/broker"
 	"aurora-relayer-go-common/endpoint"
 	eventbroker "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum/events"
 	"aurora-relayer-go-common/utils"
@@ -11,12 +12,12 @@ import (
 
 type EventsForGoEth struct {
 	*endpoint.Endpoint
-	eventBroker *eventbroker.EventBroker
+	eventBroker broker.Broker
 	newHeadsCh  chan *utils.BlockResponse
 	logsCh      chan []*utils.LogResponse
 }
 
-func NewEventsForGoEth(ep *endpoint.Endpoint, eb *eventbroker.EventBroker) *EventsForGoEth {
+func NewEventsForGoEth(ep *endpoint.Endpoint, eb broker.Broker) *EventsForGoEth {
 	return &EventsForGoEth{
 		Endpoint:    ep,
 		eventBroker: eb,

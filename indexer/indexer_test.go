@@ -364,7 +364,7 @@ func TestStateTransitions(t *testing.T) {
 			errContains: "",
 		},
 		{
-			name:    "insert to increment on success",
+			name:    "insert to publish on success",
 			enabled: true,
 			config:  stopsAfterMaxRetryYml,
 			failMsg: "insert should return insert on success if keepFiles is true",
@@ -384,11 +384,36 @@ func TestStateTransitions(t *testing.T) {
 				r = r(i)
 				return nameOfFunc(r), err
 			},
+			want:        nameOfFunc(publish),
+			errContains: "",
+		},
+		{
+			name:    "publish to increment on success",
+			enabled: true,
+			config:  stopsAfterMaxRetryYml,
+			failMsg: "insert should return insert on success if keepFiles is true",
+			args:    []interface{}{&sh},
+			setup: func(args ...interface{}) {
+				initConfig(stopsAfterMaxRetryYml)
+				createFiles(blocks, 0)
+				args[0] = initStoreHandler()
+			},
+			teardown: func(args ...interface{}) {
+				args[0].(*db.StoreHandler).Close()
+				deleteFiles()
+			},
+			call: func(args ...interface{}) (interface{}, error) {
+				i, err := New(args[0].(*db.StoreHandler))
+				r := read(i)
+				r = r(i)
+				r = r(i)
+				return nameOfFunc(r), err
+			},
 			want:        nameOfFunc(increment),
 			errContains: "",
 		},
 		{
-			name:    "insert to removeFile on success",
+			name:    "publish to removeFile on success",
 			enabled: true,
 			config:  removeFilesFoldersYml,
 			failMsg: "insert should return removeFile on success if keepFiles is true",
@@ -405,6 +430,7 @@ func TestStateTransitions(t *testing.T) {
 			call: func(args ...interface{}) (interface{}, error) {
 				i, err := New(args[0].(*db.StoreHandler))
 				r := read(i)
+				r = r(i)
 				r = r(i)
 				return nameOfFunc(r), err
 			},

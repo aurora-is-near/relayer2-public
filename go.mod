@@ -4,7 +4,7 @@ go 1.18
 
 //replace aurora-relayer-go-common => ../aurora-relayer-go-common
 
-replace aurora-relayer-go-common => github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20220902123414-499ff135a1b3
+replace aurora-relayer-go-common => github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20220915065313-3aa10bc82a1a
 
 require (
 	aurora-relayer-go-common v0.0.0

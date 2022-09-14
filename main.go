@@ -47,13 +47,6 @@ func main() {
 		}
 		defer handler.Close()
 
-		indxr, err := indexer.New(handler)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("failed to start indexer")
-		}
-		indxr.Start()
-		defer indxr.Close()
-
 		baseEndpoint := commonEndpoint.New(handler)
 		baseEndpoint.WithPreprocessor(preprocessor.NewEnableDisable())
 		baseEndpoint.WithPreprocessor(preprocessor.NewProxy())
@@ -82,7 +75,7 @@ func main() {
 			Service:   endpoint.NewCustomEth(baseEndpoint),
 		})
 
-		eventsEndpoint := endpoint.NewEventsForGoEth(baseEndpoint, rpcNode.EventBroker)
+		eventsEndpoint := endpoint.NewEventsForGoEth(baseEndpoint, rpcNode.Broker)
 		rpcAPIs = append(rpcAPIs, rpc.API{
 			Namespace: "eth",
 			Version:   "1.0",
@@ -95,6 +88,18 @@ func main() {
 			logger.Fatal().Err(err).Msg("failed to start json-rpc server")
 		}
 		defer rpcNode.Close()
+
+		var indxr *indexer.Indexer
+		if rpcNode.Broker != nil {
+			indxr, err = indexer.NewWithBroker(handler, rpcNode.Broker)
+		} else {
+			indxr, err = indexer.New(handler)
+		}
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to start indexer")
+		}
+		indxr.Start()
+		defer indxr.Close()
 
 		sig := make(chan os.Signal)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
