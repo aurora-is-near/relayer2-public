@@ -1,6 +1,7 @@
 package indexer
 
 import (
+	"aurora-relayer-go-common/broker"
 	"aurora-relayer-go-common/db"
 	"aurora-relayer-go-common/log"
 	"aurora-relayer-go-common/utils"
@@ -39,11 +40,12 @@ type Indexer struct {
 	l      *log.Logger
 	c      *Config
 	s      *indexerState
+	b      broker.Broker
 	lock   *sync.Mutex
 	stopCh chan bool
 }
 
-// New creates the indexer and starts the indexer state machine
+// New creates the indexer, the db.Handler should not be nil
 func New(dbh db.Handler) (*Indexer, error) {
 	if dbh == nil {
 		return nil, errors.New("db handler is not initialized")
@@ -99,12 +101,28 @@ func New(dbh db.Handler) (*Indexer, error) {
 	return indexer, nil
 }
 
+// NewWithBroker is same as New but also sets broker for indexer. Both db.Handler and broker.Broker should not be nil.
+// Initialize indexer with broker only if the JSON-RPC server supports subscription, otherwise use New instead.
+func NewWithBroker(dbh db.Handler, b broker.Broker) (*Indexer, error) {
+	if b == nil {
+		return nil, errors.New("broker is not initialized")
+	}
+	i, err := New(dbh)
+	if err != nil {
+		return nil, err
+	}
+	i.b = b
+	return i, nil
+}
+
+// Start indexer state machine as a goroutine, if it's not already started.
 func (i *Indexer) Start() {
 	i.lock.Lock()
 	defer i.lock.Unlock()
 	if !i.s.started {
 		i.s.started = true
 		i.s.stats.blockIndexingStartTime = time.Now()
+		i.l.Info().Msgf("starting indexing fromBlock: [%d], source: [%s]", i.c.FromBlock, i.c.SourceFolder)
 		go i.index()
 	}
 }
@@ -119,9 +137,8 @@ func (i *Indexer) Close() {
 	}
 }
 
-// index starts the indexer state machine
+// index is the entry point of indexer state machine
 func (i *Indexer) index() {
-	i.l.Info().Msgf("starting indexing fromBlock: [%d], source: [%s]", i.c.FromBlock, i.c.SourceFolder)
 	f := read
 	for {
 		f = f(i)
@@ -173,7 +190,7 @@ func read(i *Indexer) processIndexerState {
 }
 
 // insert adds the block to persistent storage.
-// 	On success, continues with either increment or removeFile.
+// 	On success, continues with publish.
 // 	On failure, retries for Config.RetryCountOnFailure and if all retries fails then stops indexer
 func insert(i *Indexer) processIndexerState {
 	i.l.Debug().Msgf("inserting block: [%d]", i.s.block.Height)
@@ -182,11 +199,7 @@ func insert(i *Indexer) processIndexerState {
 	if next := i.evalError(err, insert, stop); next != nil {
 		return next
 	}
-	if i.c.KeepFiles {
-		return increment
-	} else {
-		return removeFile
-	}
+	return publish
 }
 
 // removeFile tries to remove file pointed by indexerState.filePath. If the file is the last file of the sub block it
@@ -237,7 +250,7 @@ func increment(i *Indexer) processIndexerState {
 	return read
 }
 
-// stops indexer state machine.
+// stop indexer state machine.
 func stop(i *Indexer) processIndexerState {
 	lastBlock, err := (*i.dbh).BlockNumber()
 	if err != nil {
@@ -248,9 +261,37 @@ func stop(i *Indexer) processIndexerState {
 	return nil
 }
 
-// TODO: state to filter/publish subscription data
+// publish sends block and log data to event broker if broker is initialized, returns either increment or removeFile
 func publish(i *Indexer) processIndexerState {
-	return nil
+	if i.b != nil {
+		i.l.Debug().Msgf("publishing block: [%d]", i.s.currBlock)
+		i.b.PublishNewHeads(i.s.block.ToResponse(true))
+		var logResponses []*utils.LogResponse
+		for txId, tx := range i.s.block.Transactions {
+			for lId, l := range tx.Logs {
+				logResponse := utils.LogResponse{
+					Removed:          false,
+					LogIndex:         utils.IntToUint256(lId),
+					TransactionIndex: utils.IntToUint256(txId),
+					TransactionHash:  tx.Hash,
+					BlockHash:        i.s.block.Hash,
+					BlockNumber:      i.s.block.Sequence,
+					Address:          l.Address,
+					Data:             l.Data,
+					Topics:           l.Topics,
+				}
+				logResponses = append(logResponses, &logResponse)
+			}
+		}
+		if len(logResponses) > 0 {
+			i.b.PublishLogs(logResponses)
+		}
+	}
+	if i.c.KeepFiles {
+		return increment
+	} else {
+		return removeFile
+	}
 }
 
 // isDirEmpty checks whether a directory is empty or not, returns;
