@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/net/context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -55,7 +56,7 @@ func New(dbh db.Handler) (*Indexer, error) {
 	config := GetConfig()
 
 	var fromBlock uint64
-	lb, err := dbh.BlockNumber()
+	lb, err := dbh.BlockNumber(context.Background())
 	if err != nil {
 		fromBlock = GenesisBlock
 	} else {
@@ -194,7 +195,6 @@ func read(i *Indexer) processIndexerState {
 // 	On failure, retries for Config.RetryCountOnFailure and if all retries fails then stops indexer
 func insert(i *Indexer) processIndexerState {
 	i.l.Debug().Msgf("inserting block: [%d]", i.s.block.Height)
-	i.s.block.Sequence = utils.UintToUint256(i.s.block.Height)
 	err := (*i.dbh).InsertBlock(i.s.block)
 	if next := i.evalError(err, insert, stop); next != nil {
 		return next
@@ -252,7 +252,7 @@ func increment(i *Indexer) processIndexerState {
 
 // stop indexer state machine.
 func stop(i *Indexer) processIndexerState {
-	lastBlock, err := (*i.dbh).BlockNumber()
+	lastBlock, err := (*i.dbh).BlockNumber(context.Background())
 	if err != nil {
 		i.l.Error().Err(err).Msg("failed to get last indexed block")
 	}
@@ -275,7 +275,7 @@ func publish(i *Indexer) processIndexerState {
 					TransactionIndex: utils.IntToUint256(txId),
 					TransactionHash:  tx.Hash,
 					BlockHash:        i.s.block.Hash,
-					BlockNumber:      i.s.block.Sequence,
+					BlockNumber:      utils.UintToUint256(i.s.block.Height),
 					Address:          l.Address,
 					Data:             l.Data,
 					Topics:           l.Topics,
