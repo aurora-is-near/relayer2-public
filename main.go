@@ -5,7 +5,7 @@ import (
 	"aurora-relayer-go-common/db"
 	"aurora-relayer-go-common/db/badger"
 	commonEndpoint "aurora-relayer-go-common/endpoint"
-	"aurora-relayer-go-common/endpoint/preprocessor"
+	"aurora-relayer-go-common/endpoint/processor"
 	"aurora-relayer-go-common/log"
 	goEthereum "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum"
 	"aurora-relayer-go/endpoint"
@@ -48,8 +48,9 @@ func main() {
 		defer handler.Close()
 
 		baseEndpoint := commonEndpoint.New(handler)
-		baseEndpoint.WithPreprocessor(preprocessor.NewEnableDisable())
-		baseEndpoint.WithPreprocessor(preprocessor.NewProxy())
+		baseEndpoint.WithProcessor(processor.NewEnableDisable())
+		baseEndpoint.WithProcessor(processor.NewProxy())
+		baseEndpoint.WithProcessor(processor.NewBadgerTxn())
 
 		ethEndpoint := commonEndpoint.NewEth(baseEndpoint)
 
@@ -62,7 +63,7 @@ func main() {
 		rpcAPIs = append(rpcAPIs, rpc.API{
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   commonEndpoint.NewEthPreprocessorAware(ethEndpoint),
+			Service:   commonEndpoint.NewEthProcessorAware(ethEndpoint),
 		})
 		rpcAPIs = append(rpcAPIs, rpc.API{
 			Namespace: "web3",

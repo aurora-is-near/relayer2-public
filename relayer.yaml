@@ -19,8 +19,12 @@ db:
         InMemory: false
         DetectConflicts: false
 endpoint:
+  eth:
+    chainId: 1
+  proxyEndpoints:
+    -
   disabledEndpoints:
-    - eth_protocolVersion
+    -
 rpcNode:
   geth:
     HTTPHost: localhost
