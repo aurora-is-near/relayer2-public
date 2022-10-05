@@ -684,10 +684,10 @@ func initStoreHandler() *db.StoreHandler {
 
 func insertBlocks(sh *db.StoreHandler) {
 	blocks := [...]*utils.Block{
-		{Sequence: utils.IntToUint256(GenesisBlock), Hash: utils.HexStringToHash("a"), Transactions: []*utils.Transaction{{}}},
-		{Sequence: utils.IntToUint256(GenesisBlock + 1), Hash: utils.HexStringToHash("b"), Transactions: []*utils.Transaction{{}, {}}},
-		{Sequence: utils.IntToUint256(GenesisBlock + 2), Hash: utils.HexStringToHash("c"), Transactions: []*utils.Transaction{{}, {}, {}}},
-		{Sequence: utils.IntToUint256(GenesisBlock + 3), Hash: utils.HexStringToHash("d"), Transactions: []*utils.Transaction{{}, {}, {}, {}}},
+		{Sequence: GenesisBlock, Hash: utils.HexStringToHash("a"), Transactions: []*utils.Transaction{{}}},
+		{Sequence: GenesisBlock + 1, Hash: utils.HexStringToHash("b"), Transactions: []*utils.Transaction{{}, {}}},
+		{Sequence: GenesisBlock + 2, Hash: utils.HexStringToHash("c"), Transactions: []*utils.Transaction{{}, {}, {}}},
+		{Sequence: GenesisBlock + 3, Hash: utils.HexStringToHash("d"), Transactions: []*utils.Transaction{{}, {}, {}, {}}},
 	}
 	for _, b := range blocks {
 		err := sh.InsertBlock(b)
