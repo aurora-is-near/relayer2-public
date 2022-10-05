@@ -48,11 +48,14 @@ func main() {
 		defer handler.Close()
 
 		baseEndpoint := commonEndpoint.New(handler)
+
+		// order of processors are important
 		baseEndpoint.WithProcessor(processor.NewEnableDisable())
 		baseEndpoint.WithProcessor(processor.NewProxy())
 		baseEndpoint.WithProcessor(processor.NewBadgerTxn())
 
 		ethEndpoint := commonEndpoint.NewEth(baseEndpoint)
+		web3Endpoint := commonEndpoint.NewWeb3(baseEndpoint)
 
 		rpcNode, err := goEthereum.New()
 		if err != nil {
@@ -68,12 +71,7 @@ func main() {
 		rpcAPIs = append(rpcAPIs, rpc.API{
 			Namespace: "web3",
 			Version:   "1.0",
-			Service:   commonEndpoint.NewWeb3(baseEndpoint),
-		})
-		rpcAPIs = append(rpcAPIs, rpc.API{
-			Namespace: "eth",
-			Version:   "1.0",
-			Service:   endpoint.NewCustomEth(baseEndpoint),
+			Service:   commonEndpoint.NewWeb3ProcessorAware(web3Endpoint),
 		})
 
 		eventsEndpoint := endpoint.NewEventsForGoEth(baseEndpoint, rpcNode.Broker)
