@@ -33,10 +33,19 @@ db:
         InMemory: false
         DetectConflicts: false
 endpoint:
+  engine:
+    nearNetworkID: testnet
+    nearNodeURL: https://archival-rpc.testnet.near.org
+    nearReceiverID: tolgcoplu.testnet
+    minGasPrice: 0
+    minGasLimit: 21000
+    gasForNearTxsCall: 300000000000000
+    depositForNearTxsCall: 0
+    retryWaitTimeMsForNearTxsCall: 3000
+    retryNumberForNearTxsCall: 3
   eth:
     protocolVersion: 0x41
     hashrate: 0
-    chainId: 1
     gas: 6721975
   proxyEndpoints:
     url: "https://testnet.aurora.dev:443"

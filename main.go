@@ -81,6 +81,19 @@ func main() {
 			Service:   eventsEndpoint,
 		})
 
+		engineEth := endpoint.NewEngineEth(baseEndpoint)
+		rpcAPIs = append(rpcAPIs, rpc.API{
+			Namespace: "eth",
+			Version:   "1.0",
+			Service:   engineEth,
+		})
+
+		rpcAPIs = append(rpcAPIs, rpc.API{
+			Namespace: "net",
+			Version:   "1.0",
+			Service:   endpoint.NewEngineNet(engineEth),
+		})
+
 		rpcNode.RegisterAPIs(rpcAPIs)
 		err = rpcNode.Start()
 		if err != nil {
