@@ -10,6 +10,7 @@ import (
 	goEthereum "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum"
 	"aurora-relayer-go/endpoint"
 	"aurora-relayer-go/indexer"
+	"aurora-relayer-go/middleware"
 	"os"
 	"os/signal"
 	"syscall"
@@ -95,6 +96,9 @@ func main() {
 		})
 
 		rpcNode.RegisterAPIs(rpcAPIs)
+
+		rpcNode.WithMiddleware("filterIP", "/", middleware.FilterIP)
+
 		err = rpcNode.Start()
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed to start json-rpc server")

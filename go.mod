@@ -4,7 +4,7 @@ go 1.18
 
 //replace aurora-relayer-go-common => ../aurora-relayer-go-common
 
-replace aurora-relayer-go-common => github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20221025153605-0ec13cc650a5
+replace aurora-relayer-go-common => github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20221122071546-d3466d36df77
 
 // The following package had a conflicting dependency.
 // Fixed by pointing the dependency to the latest version tag.
@@ -44,7 +44,7 @@ require (
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fjl/memsize v0.0.1 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
