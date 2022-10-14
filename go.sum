@@ -48,8 +48,8 @@ github.com/aead/siphash v1.0.1/go.mod h1:Nywa3cDsYNNK3gaciGTWPwHt0wlpNV15vwmswBA
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
-github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20221025153605-0ec13cc650a5 h1:nXEKjZR5eHiTrDU0kBrX2PwDjucfTsYFaegjErrMcE4=
-github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20221025153605-0ec13cc650a5/go.mod h1:5Pm4TlbI0DXtpx1tFSVVCUY7jV6mLwqQdFsfl2TmyqU=
+github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20221122071546-d3466d36df77 h1:yHbrzYqBI7KVz7z0BHSi4f72Dlt8zphvFErXECeQe7c=
+github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20221122071546-d3466d36df77/go.mod h1:5Pm4TlbI0DXtpx1tFSVVCUY7jV6mLwqQdFsfl2TmyqU=
 github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1 h1:Nw9J9K7CksfVBa9uCVfvf1uAIQRhrNG677q8eH1gtVg=
 github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1/go.mod h1:Li013EFlPu3crtlFQtWJAeE7VmdhSsxOpRoop1J0icw=
 github.com/aurora-is-near/near-api-go v0.0.13-0.20221011140300-30882c6356c4 h1:b2Af6VFU4iETG9wiBlQT9EWO93t5qZje/jQUKcpqSyo=

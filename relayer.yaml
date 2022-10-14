@@ -70,7 +70,7 @@ rpcNode:
       - "web3"
       - "eth"
     WSHost: localhost
-    WSPort: 8546
+    WSPort: 8545
     WSModules:
       - "net"
       - "web3"

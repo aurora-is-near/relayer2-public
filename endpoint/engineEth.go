@@ -301,11 +301,11 @@ func validateRawTransaction(rawRxsBytes []byte, cfg endpoint.EngineConfig) error
 	if err != nil {
 		return errors.New("transaction parameter is not correct")
 	}
-	//check if provided gas price is bigger than min gas price limit
+	// check if provided gas price is bigger than min gas price limit
 	if txsObj.GasPrice().Cmp(cfg.MinGasPrice) < 0 {
 		return errors.New("gas price too low")
 	}
-	//check if provided gas limit is bigger than min gas limit
+	// check if provided gas limit is bigger than min gas limit
 	if txsObj.Gas() < cfg.MinGasLimit {
 		return errors.New("intrinsic gas too low")
 	}
