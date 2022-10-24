@@ -26,7 +26,7 @@ type EngineEth struct {
 
 func NewEngineEth(ep *endpoint.Endpoint) *EngineEth {
 	if ep.Config.EngineConfig.NearNetworkID == "" || ep.Config.EngineConfig.NearNodeURL == "" || ep.Config.EngineConfig.NearReceiverID == "" {
-		panic("Near settings in the config file under `endpoint->engine` should be validated")
+		panic("Near settings in the config file under `endpoint->engine` should be checked")
 	}
 
 	// Establish engine communication and auth the near account
@@ -152,13 +152,13 @@ func (e *EngineEth) getStorageAt(_ context.Context, address utils.Address, stora
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) Call(ctx context.Context, txs utils.TransactionForCall, block *utils.BlockNum) (*utils.Uint256, error) {
-	return endpoint.Process(ctx, "eth_call", e.Endpoint, func(ctx context.Context) (*utils.Uint256, error) {
+func (e *EngineEth) Call(ctx context.Context, txs utils.TransactionForCall, block *utils.BlockNum) (*string, error) {
+	return endpoint.Process(ctx, "eth_call", e.Endpoint, func(ctx context.Context) (*string, error) {
 		return e.call(ctx, txs, block)
 	}, txs, block)
 }
 
-func (e *EngineEth) call(_ context.Context, txs utils.TransactionForCall, block *utils.BlockNum) (*utils.Uint256, error) {
+func (e *EngineEth) call(_ context.Context, txs utils.TransactionForCall, block *utils.BlockNum) (*string, error) {
 	argsBuf, err := formatCallArgsForEngine(txs)
 	if err != nil {
 		return nil, &utils.GenericError{Err: err}
@@ -168,7 +168,7 @@ func (e *EngineEth) call(_ context.Context, txs utils.TransactionForCall, block 
 	if err != nil {
 		return nil, &utils.GenericError{Err: err}
 	}
-	return getUint256ResultFromEngineResponse(resp)
+	return getCallResultFromEngineResponse(resp)
 }
 
 // SendRawTransactionSync submits a raw transaction to engine synchronously
@@ -248,7 +248,16 @@ func getUint256ResultFromEngineResponse(respArg interface{}) (*utils.Uint256, er
 	if err != nil {
 		return nil, &utils.GenericError{Err: err}
 	}
-	return engineResult.ToResponse(), nil
+	return engineResult.ToResponse()
+}
+
+// getCallResultFromEngineResponse gets the return value from engine and converts it to string format
+func getCallResultFromEngineResponse(respArg interface{}) (*string, error) {
+	status, err := utils.NewTransactionStatus(respArg)
+	if err != nil {
+		return nil, &utils.GenericError{Err: err}
+	}
+	return status.ToResponse()
 }
 
 // formatGetStorageAtArgsForEngine gets input address and storage slot arguments
@@ -278,17 +287,7 @@ func getTxsResultFromEngineResponse(respArg interface{}, txsHash string) (*utils
 	if err != nil {
 		return nil, &utils.GenericError{Err: err}
 	}
-	err = status.Validate()
-	// status.Validate generates both `utils.InvalidParams` or `errors.New` error tpes
-	if err != nil {
-		_, ok := err.(*utils.InvalidParamsError)
-		if ok {
-			return nil, err
-		} else {
-			return nil, &utils.GenericError{Err: err}
-		}
-	}
-	return status.ToResponse(), nil
+	return status.ToResponse()
 }
 
 // validateRawTransaction validates the raw transaction by checking GasPrice and Gas Limit
