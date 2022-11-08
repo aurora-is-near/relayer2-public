@@ -36,7 +36,9 @@ endpoint:
   engine:
     nearNetworkID: testnet
     nearNodeURL: https://archival-rpc.testnet.near.org
-    nearReceiverID:
+    signer:
+    signerKey:
+    asyncSendRawTxs: false
     minGasPrice: 0
     minGasLimit: 21000
     gasForNearTxsCall: 300000000000000

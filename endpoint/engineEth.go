@@ -25,7 +25,7 @@ type EngineEth struct {
 }
 
 func NewEngineEth(ep *endpoint.Endpoint) *EngineEth {
-	if ep.Config.EngineConfig.NearNetworkID == "" || ep.Config.EngineConfig.NearNodeURL == "" || ep.Config.EngineConfig.NearReceiverID == "" {
+	if ep.Config.EngineConfig.NearNetworkID == "" || ep.Config.EngineConfig.NearNodeURL == "" || ep.Config.EngineConfig.Signer == "" {
 		panic("Near settings in the config file under `endpoint->engine` should be checked")
 	}
 
@@ -34,8 +34,11 @@ func NewEngineEth(ep *endpoint.Endpoint) *EngineEth {
 		NetworkID: ep.Config.EngineConfig.NearNetworkID,
 		NodeURL:   ep.Config.EngineConfig.NearNodeURL,
 	}
+	if ep.Config.EngineConfig.SignerKey != "" {
+		nearCfg.KeyPath = ep.Config.EngineConfig.SignerKey
+	}
 	nearcon := near.NewConnection(nearCfg.NodeURL)
-	nearaccount, err := near.LoadAccount(nearcon, nearCfg, ep.Config.EngineConfig.NearReceiverID)
+	nearaccount, err := near.LoadAccount(nearcon, nearCfg, ep.Config.EngineConfig.Signer)
 	if err != nil {
 		panic(err)
 	}
@@ -171,16 +174,44 @@ func (e *EngineEth) call(_ context.Context, txs utils.TransactionForCall, block 
 	return getCallResultFromEngineResponse(resp)
 }
 
-// SendRawTransactionSync submits a raw transaction to engine synchronously
-func (e *EngineEth) SendRawTransactionSync(ctx context.Context, txs utils.Uint256) (*utils.H256, error) {
-	return endpoint.Process(ctx, "eth_sendRawTransaction", e.Endpoint, func(ctx context.Context) (*utils.H256, error) {
-		return e.sendRawTransactionSync(ctx, txs)
+// SendRawTransaction submits a raw transaction to engine either asynchronously or synchronously based on the configuration
+//
+// 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
+// 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
+// 	On missing or invalid param returns error code '-32602' with custom message.
+func (e *EngineEth) SendRawTransaction(ctx context.Context, txs utils.Uint256) (*string, error) {
+	return endpoint.Process(ctx, "eth_sendRawTransaction", e.Endpoint, func(ctx context.Context) (*string, error) {
+		return e.sendRawTransaction(ctx, txs)
 	}, txs)
 }
 
-//TODO - Keeping this endpoint for test purposes only. Will be removed/commented-out before release
-func (e *EngineEth) sendRawTransactionSync(_ context.Context, txs utils.Uint256) (*utils.H256, error) {
+func (e *EngineEth) sendRawTransaction(_ context.Context, txs utils.Uint256) (*string, error) {
 	txsBytes := txs.Bytes()
+	// Call either async or sync version of sendRawTransaction according to the configuration parameter
+	if e.Config.EngineConfig.AsyncSendRawTxs {
+		return e.asyncSendRawTransaction(txsBytes)
+	} else {
+		return e.syncSendRawTransaction(txsBytes)
+	}
+}
+
+// asyncSendRawTransaction submits a raw transaction to engine asynchronously
+func (e *EngineEth) asyncSendRawTransaction(txsBytes []byte) (*string, error) {
+	// check transaction data and return error if any issues (like low gas price or gas limit)
+	err := validateRawTransaction(txsBytes, e.Config.EngineConfig)
+	if err != nil {
+		return nil, &utils.InvalidParamsError{Message: err.Error()}
+	}
+	resp, err := e.sendRawTransactionWithRetry(txsBytes)
+	if err != nil {
+		return nil, &utils.GenericError{Err: err}
+	}
+
+	return resp, nil
+}
+
+// syncSendRawTransaction submits a raw transaction to engine synchronously
+func (e *EngineEth) syncSendRawTransaction(txsBytes []byte) (*string, error) {
 	// check transaction data and return error if any issues (like low gas price or gas limit)
 	err := validateRawTransaction(txsBytes, e.Config.EngineConfig)
 	if err != nil {
@@ -194,32 +225,6 @@ func (e *EngineEth) sendRawTransactionSync(_ context.Context, txs utils.Uint256)
 		return nil, &utils.GenericError{Err: err}
 	}
 	return getTxsResultFromEngineResponse(resp, ("0x" + hex.EncodeToString(txsHash)))
-}
-
-// SendRawTransaction submits a raw transaction to engine asynchronously
-//
-// 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
-// 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
-// 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) SendRawTransaction(ctx context.Context, txs utils.Uint256) (*string, error) {
-	return endpoint.Process(ctx, "eth_sendRawTransaction", e.Endpoint, func(ctx context.Context) (*string, error) {
-		return e.sendRawTransaction(ctx, txs)
-	}, txs)
-}
-
-func (e *EngineEth) sendRawTransaction(_ context.Context, txs utils.Uint256) (*string, error) {
-	txsBytes := txs.Bytes()
-	// check transaction data and return error if any issues (like low gas price or gas limit)
-	err := validateRawTransaction(txsBytes, e.Config.EngineConfig)
-	if err != nil {
-		return nil, &utils.InvalidParamsError{Message: err.Error()}
-	}
-	resp, err := e.sendRawTransactionWithRetry(txsBytes)
-	if err != nil {
-		return nil, &utils.GenericError{Err: err}
-	}
-
-	return resp, nil
 }
 
 // sendRawTransactionWithRetry send the Txs with a constant configurable retry count and duration in case of error
@@ -282,7 +287,7 @@ func formatCallArgsForEngine(txs utils.TransactionForCall) ([]byte, error) {
 }
 
 // getTxsResultFromEngineResponse gets the sendRawTransactionSync response, parse and process the near data structures to be able to generate the rpc response
-func getTxsResultFromEngineResponse(respArg interface{}, txsHash string) (*utils.H256, error) {
+func getTxsResultFromEngineResponse(respArg interface{}, txsHash string) (*string, error) {
 	status, err := utils.NewSubmitStatus(respArg, txsHash)
 	if err != nil {
 		return nil, &utils.GenericError{Err: err}
