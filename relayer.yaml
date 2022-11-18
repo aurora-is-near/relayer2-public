@@ -1,6 +1,6 @@
 logger:
   level: info
-  path: /tmp/relayer/log/relayer.log
+  filePath: /tmp/relayer/log/relayer.log
   logToConsole: true
   logToFile: true
 db:
