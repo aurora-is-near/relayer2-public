@@ -11,6 +11,7 @@ import (
 	"aurora-relayer-go/endpoint"
 	"aurora-relayer-go/indexer"
 	"aurora-relayer-go/middleware"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,17 +20,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	version = "0.1.0"
-)
-
 func main() {
-
 	c := cmd.RootCmd()
-	c.AddCommand(cmd.VersionCmd(func(cmd *cobra.Command, args []string) {
-		println("app: ", "v", version)
-	}))
-
+	c.AddCommand(cmd.VersionCmd())
 	c.AddCommand(cmd.StartCmd(func(cmd *cobra.Command, args []string) {
 
 		logger := log.Log()
@@ -123,6 +116,7 @@ func main() {
 	}))
 
 	if err := c.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "There was an error while executing Relayer CLI '%s'", err)
 		os.Exit(1)
 	}
 }
