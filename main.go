@@ -46,7 +46,6 @@ func main() {
 		// order of processors are important
 		baseEndpoint.WithProcessor(processor.NewEnableDisable())
 		baseEndpoint.WithProcessor(processor.NewProxy())
-		baseEndpoint.WithProcessor(processor.NewBadgerTxn())
 
 		ethEndpoint := commonEndpoint.NewEth(baseEndpoint)
 		web3Endpoint := commonEndpoint.NewWeb3(baseEndpoint)

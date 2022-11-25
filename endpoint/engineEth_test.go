@@ -1,6 +1,8 @@
 package endpoint
 
 import (
+	"aurora-relayer-go-common/types/common"
+	"aurora-relayer-go-common/types/engine"
 	"context"
 	"crypto/rand"
 	"os"
@@ -12,8 +14,6 @@ import (
 	"aurora-relayer-go-common/db"
 	"aurora-relayer-go-common/db/badger"
 	commonEndpoint "aurora-relayer-go-common/endpoint"
-	"aurora-relayer-go-common/utils"
-
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -75,22 +75,22 @@ var rpcClientBase *rpc.Client
 var baseEndpoint *commonEndpoint.Endpoint
 var engineEth *EngineEth
 var engineNet *EngineNet
-var fromAddr utils.Address
-var toAddr utils.Address
-var transferVal utils.Uint256
-var transferValOOF utils.Uint256
-var contractAddr utils.Address
-var contractAddrStackOverFlow utils.Address
-var contractAddrCallTooDeep utils.Address
-var contractAddrOutOfOffset utils.Address
-var contractData utils.Uint256
-var contractDataStackOverFlow utils.Uint256
-var contractDataCallTooDeep utils.Uint256
-var contractDataOutOfOffset utils.Uint256
-var txsInvalidNonce utils.Uint256
-var txsInvalidRawData utils.Uint256
-var txsLowGasPrice utils.Uint256
-var txsLowGasLimit utils.Uint256
+var fromAddr common.Address
+var toAddr common.Address
+var transferVal common.Uint256
+var transferValOOF common.Uint256
+var contractAddr common.Address
+var contractAddrStackOverFlow common.Address
+var contractAddrCallTooDeep common.Address
+var contractAddrOutOfOffset common.Address
+var contractData common.Uint256
+var contractDataStackOverFlow common.Uint256
+var contractDataCallTooDeep common.Uint256
+var contractDataOutOfOffset common.Uint256
+var txsInvalidNonce common.Uint256
+var txsInvalidRawData common.Uint256
+var txsLowGasPrice common.Uint256
+var txsLowGasLimit common.Uint256
 
 func initializeStoreHandler() db.Handler {
 	bh, err := badger.NewBlockHandler()
@@ -128,28 +128,28 @@ func TestMain(m *testing.M) {
 	// Create a rpc client to run JSON RPC calls and compare the results
 	rpcClientBase, _ = rpc.DialContext(context.Background(), baseUrl)
 
-	// Create the from, to, and contract addresses to use in the tests
-	fromAddr = utils.HexStringToAddress(fromAddress)
-	toAddr = utils.HexStringToAddress(toAddress)
-	transferVal = utils.IntToUint256(transferValue)
-	transferValOOF = utils.IntToUint256(transferValueOOF)
-	contractAddr = utils.HexStringToAddress(contractAddress)
-	contractAddrStackOverFlow = utils.HexStringToAddress(contractAddressStackOverFlow)
-	contractAddrCallTooDeep = utils.HexStringToAddress(contractAddressCallTooDeep)
-	contractAddrOutOfOffset = utils.HexStringToAddress(contractAddressOutOfOffset)
+	// Create from, to, and contract addresses to use in the tests
+	fromAddr = common.HexStringToAddress(fromAddress)
+	toAddr = common.HexStringToAddress(toAddress)
+	transferVal = common.IntToUint256(transferValue)
+	transferValOOF = common.IntToUint256(transferValueOOF)
+	contractAddr = common.HexStringToAddress(contractAddress)
+	contractAddrStackOverFlow = common.HexStringToAddress(contractAddressStackOverFlow)
+	contractAddrCallTooDeep = common.HexStringToAddress(contractAddressCallTooDeep)
+	contractAddrOutOfOffset = common.HexStringToAddress(contractAddressOutOfOffset)
 
-	contractData.FromHexString(contractCheckMethodData)
-	contractDataStackOverFlow.FromHexString(contractCallToDeepMethodData)
-	contractDataCallTooDeep.FromHexString(contractCallTestMethodData)
-	contractDataOutOfOffset.FromHexString(contractCallTestOOOMethodData)
-	tmp := new(utils.Uint256)
-	tmp.FromHexString(txsInvalidNonceStr)
+	contractData = common.Uint256FromHex(contractCheckMethodData)
+	contractDataStackOverFlow = common.Uint256FromHex(contractCallToDeepMethodData)
+	contractDataCallTooDeep = common.Uint256FromHex(contractCallTestMethodData)
+	contractDataOutOfOffset = common.Uint256FromHex(contractCallTestOOOMethodData)
+	tmp := new(common.Uint256)
+	*tmp = common.Uint256FromHex(txsInvalidNonceStr)
 	txsInvalidNonce = *tmp
-	tmp.FromHexString(txsInvalidRawDataStr)
+	*tmp = common.Uint256FromHex(txsInvalidRawDataStr)
 	txsInvalidRawData = *tmp
-	tmp.FromHexString(txsLowGasLimitStr)
+	*tmp = common.Uint256FromHex(txsLowGasLimitStr)
 	txsLowGasLimit = *tmp
-	tmp.FromHexString(txsLowGasPriceStr)
+	*tmp = common.Uint256FromHex(txsLowGasPriceStr)
 	txsLowGasPrice = *tmp
 
 	// If no default provided user the random generated addresses
@@ -212,10 +212,10 @@ func TestNetEndpointsCompare(t *testing.T) {
 }
 
 func TestEthEndpointsCompare(t *testing.T) {
-	SafeBlockNumber := utils.IntToBlockNum(-4)
-	FinalizedBlockNumber := utils.IntToBlockNum(-3)
-	PendingBlockNumber := utils.IntToBlockNum(-2)
-	LatestBlockNumber := utils.IntToBlockNum(-1)
+	SafeBlockNumber := common.IntToBN64(-4)
+	FinalizedBlockNumber := common.IntToBN64(-3)
+	PendingBlockNumber := common.IntToBN64(-2)
+	LatestBlockNumber := common.IntToBN64(-1)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutSec*time.Second)
 	defer cancel()
@@ -233,7 +233,7 @@ func TestEthEndpointsCompare(t *testing.T) {
 		{"test eth_getCode", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, LatestBlockNumber}},
 		{"test eth_getBalance", "eth_getBalance", "GetBalance", []interface{}{ctx, fromAddr, LatestBlockNumber}},
 		{"test eth_getTransactionCount", "eth_getTransactionCount", "GetTransactionCount", []interface{}{ctx, fromAddr, LatestBlockNumber}},
-		{"test eth_getStorageAt", "eth_getStorageAt", "GetStorageAt", []interface{}{ctx, contractAddr, utils.IntToUint256(0), LatestBlockNumber}},
+		{"test eth_getStorageAt", "eth_getStorageAt", "GetStorageAt", []interface{}{ctx, contractAddr, common.IntToUint256(0), LatestBlockNumber}},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
@@ -250,8 +250,7 @@ func TestEthEndpointsCompare(t *testing.T) {
 			if err != nil {
 				t.Log(d.api, " client base error:", err)
 			}
-			expectedUint256 := utils.IntToUint256(0)
-			expectedUint256.FromHexString(expectedStr)
+			expectedUint256 := common.Uint256FromHex(expectedStr)
 			// Call the target api
 			resp, err := Invoke(ctx, engineEth, d.method, d.args...)
 			if err != nil {
@@ -259,8 +258,8 @@ func TestEthEndpointsCompare(t *testing.T) {
 			}
 			// Compare the retrieved response and expected result
 			switch v := resp.(type) {
-			case *utils.Uint256:
-				if v.Cmp(expectedUint256.Int) != 0 {
+			case *common.Uint256:
+				if v.Cmp(expectedUint256) != 0 {
 					t.Errorf("incorrect response: expected 0x%s, got 0x%s", expectedUint256.Text(16), v.Text(16))
 				}
 			default:
@@ -271,7 +270,7 @@ func TestEthEndpointsCompare(t *testing.T) {
 }
 
 func TestEthEndpointsStatic(t *testing.T) {
-	LatestBlockNumber := utils.IntToBlockNum(-1)
+	LatestBlockNumber := common.IntToBN64(-1)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutSec*time.Second)
 	defer cancel()
@@ -286,18 +285,18 @@ func TestEthEndpointsStatic(t *testing.T) {
 	}{
 		{"test aysnc eth_sendRawTransaction incorrect nonce", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidNonce}, true, "anyHash"},
 		{"test sync eth_sendRawTransaction incorrect txs raw data", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidRawData}, false, "transaction parameter is not correct"},
-		// Needs changes on engine side to be able to run this test. Therefore it is commented out for now
-		//{"test sync eth_sendRawTransaction low gas price", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasPrice}, false, "gas price too low"},
+		// Needs changes on engine side to be able to run this test. Therefore, it is commented out for now
+		// {"test sync eth_sendRawTransaction low gas price", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasPrice}, false, "gas price too low"},
 		{"test sync eth_sendRawTransaction low gas limit", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasLimit}, false, "intrinsic gas too low"},
 		{"test sync eth_sendRawTransaction incorrect nonce", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidNonce}, false, "ERR_INCORRECT_NONCE"},
-		{"test eth_call contract data", "eth_call", "Call", []interface{}{ctx, utils.TransactionForCall{From: &fromAddr, To: &contractAddr, Data: &contractData}, LatestBlockNumber}, false, "0x00000000000000000000000000000005"},
-		{"test eth_call transfer to EOA", "eth_call", "Call", []interface{}{ctx, utils.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferVal}, LatestBlockNumber}, false, "0x"},
-		// Needs changes on engine side to be able to run this test. Therefore it is commented out for now
-		//{"test eth_call out of gas", "eth_call", "Call", []interface{}{ctx, utils.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferVal, Gas: &transferValOOF}, LatestBlockNumber}, false, "execution error: Out Of Fund"},
-		{"test eth_call out of fund", "eth_call", "Call", []interface{}{ctx, utils.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferValOOF}, LatestBlockNumber}, false, "execution error: Out Of Fund"},
-		{"test eth_call stack overflow", "eth_call", "Call", []interface{}{ctx, utils.TransactionForCall{To: &contractAddrStackOverFlow, Data: &contractDataStackOverFlow}, LatestBlockNumber}, false, "wasm execution failed with error: FunctionCallError(HostError(GuestPanic { panic_msg: \"ERR_STACK_OVERFLOW\" }))"},
-		{"test eth_call call too deep", "eth_call", "Call", []interface{}{ctx, utils.TransactionForCall{To: &contractAddrCallTooDeep, Data: &contractDataCallTooDeep}, LatestBlockNumber}, false, "wasm execution failed with error: FunctionCallError(WasmTrap(Unreachable))"},
-		{"test eth_call out of offset", "eth_call", "Call", []interface{}{ctx, utils.TransactionForCall{From: &fromAddr, To: &contractAddrOutOfOffset, Data: &contractDataOutOfOffset}, LatestBlockNumber}, false, "execution error: Out Of Offset"},
+		{"test eth_call contract data", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &contractAddr, Data: &contractData}, LatestBlockNumber}, false, "0x00000000000000000000000000000005"},
+		{"test eth_call transfer to EOA", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferVal}, LatestBlockNumber}, false, "0x"},
+		// Needs changes on engine side to be able to run this test. Therefore, it is commented out for now
+		// {"test eth_call out of gas", "eth_call", "Call", []interface{}{ctx, utils.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferVal, Gas: &transferValOOF}, LatestBlockNumber}, false, "execution error: Out Of Fund"},
+		{"test eth_call out of fund", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferValOOF}, LatestBlockNumber}, false, "execution error: Out Of Fund"},
+		{"test eth_call stack overflow", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{To: &contractAddrStackOverFlow, Data: &contractDataStackOverFlow}, LatestBlockNumber}, false, "wasm execution failed with error: FunctionCallError(HostError(GuestPanic { panic_msg: \"ERR_STACK_OVERFLOW\" }))"},
+		{"test eth_call call too deep", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{To: &contractAddrCallTooDeep, Data: &contractDataCallTooDeep}, LatestBlockNumber}, false, "wasm execution failed with error: FunctionCallError(WasmTrap(Unreachable))"},
+		{"test eth_call out of offset", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &contractAddrOutOfOffset, Data: &contractDataOutOfOffset}, LatestBlockNumber}, false, "execution error: Out Of Offset"},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {

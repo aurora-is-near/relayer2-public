@@ -1,8 +1,9 @@
 package endpoint
 
 import (
-	eventbroker "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum/events"
-	"aurora-relayer-go-common/utils"
+	events "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum/events"
+	"aurora-relayer-go-common/types/request"
+	"aurora-relayer-go-common/types/response"
 	"context"
 	"encoding/json"
 	"net"
@@ -27,7 +28,7 @@ func TestUnsupportedNotifications(t *testing.T) {
 		expectedResult string
 	}{
 		{"test eth_newHeads unsupported notification", "eth_newHeads", "NewHeads", []interface{}{ctx}, "notifications not supported"},
-		{"test eth_logs unsupported notification", "eth_logs", "Logs", []interface{}{ctx, utils.LogSubscriptionOptions{}}, "notifications not supported"},
+		{"test eth_logs unsupported notification", "eth_logs", "Logs", []interface{}{ctx, request.LogSubscriptionOptions{}}, "notifications not supported"},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
@@ -60,7 +61,7 @@ func TestNewHeadsFlow(t *testing.T) {
 		clientConn, serverConn = net.Pipe()
 		out                    = json.NewEncoder(clientConn)
 	)
-	eb := eventbroker.NewEventBroker()
+	eb := events.NewEventBroker()
 	go eb.Start()
 	// Create new EventsForGoEth
 	eventsEth := NewEventsForGoEth(baseEndpoint, eb)
@@ -87,7 +88,7 @@ func TestNewHeadsFlow(t *testing.T) {
 	for {
 		select {
 		case <-trigger:
-			eventsEth.newHeadsCh <- &utils.BlockResponse{}
+			eventsEth.newHeadsCh <- &response.Block{}
 			trigger = time.After(750 * time.Millisecond)
 		case <-timeout:
 			if len(eventsEth.newHeadsCh) > 0 {
@@ -104,7 +105,7 @@ func TestLogsFlow(t *testing.T) {
 		clientConn, serverConn = net.Pipe()
 		out                    = json.NewEncoder(clientConn)
 	)
-	eb := eventbroker.NewEventBroker()
+	eb := events.NewEventBroker()
 	go eb.Start()
 	// Create new EventsForGoEth
 	eventsEth := NewEventsForGoEth(baseEndpoint, eb)
@@ -120,7 +121,7 @@ func TestLogsFlow(t *testing.T) {
 		"id":      2,
 		"method":  "eth_subscribe",
 		"version": "2.0",
-		"params":  []interface{}{"logs", utils.LogSubscriptionOptions{}},
+		"params":  []interface{}{"logs", request.LogSubscriptionOptions{}},
 	}
 	if err := out.Encode(&requestLogs); err != nil {
 		t.Fatalf("Could not create logs subscription: %v", err)
@@ -131,8 +132,8 @@ func TestLogsFlow(t *testing.T) {
 	for {
 		select {
 		case <-trigger:
-			tmp := utils.LogResponse{}
-			eventsEth.logsCh <- []*utils.LogResponse{&tmp}
+			tmp := response.Log{}
+			eventsEth.logsCh <- []*response.Log{&tmp}
 			trigger = time.After(750 * time.Millisecond)
 		case <-timeout:
 			if len(eventsEth.logsCh) > 0 {
