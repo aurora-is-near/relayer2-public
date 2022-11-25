@@ -3,7 +3,8 @@ package indexer
 import (
 	"aurora-relayer-go-common/db"
 	"aurora-relayer-go-common/db/badger"
-	"aurora-relayer-go-common/utils"
+	"aurora-relayer-go-common/types/common"
+	"aurora-relayer-go-common/types/indexer"
 	"encoding/json"
 	"fmt"
 	"github.com/spf13/viper"
@@ -21,18 +22,15 @@ const testDir = "test"
 const toBlockCannotBeGreaterThanFromBlockYml = `
 db:
   badger:
-      gcIntervalSeconds: 1
-      iterationTimeoutSeconds: 5
-      iterationMaxItems: 10000
-      logFilterTtlMinutes: 15
-      index:
-        maxJumps: 1000
-        maxRangeScanners: 2
-        maxValueFetchers: 2
-        keysOnly: false
+    core:
+      gcIntervalSeconds: 10
+      scanRangeThreshold: 3000
+      maxScanIterators: 10000
+      filterTtlMinutes: 15
       options:
+        Dir: /tmp/relayer/data
         InMemory: true
-        DetectConflicts: true
+        DetectConflicts: false
 indexer:
   sourceFolder: "test"
   subFolderBatchSize: 10000
@@ -44,18 +42,15 @@ indexer:
 const fromBlockCannotBeSmallerThanGenesisYaml = `
 db:
   badger:
-      gcIntervalSeconds: 1
-      iterationTimeoutSeconds: 5
-      iterationMaxItems: 10000
-      logFilterTtlMinutes: 15
-      index:
-        maxJumps: 1000
-        maxRangeScanners: 2
-        maxValueFetchers: 2
-        keysOnly: false
+    core:
+      gcIntervalSeconds: 10
+      scanRangeThreshold: 3000
+      maxScanIterators: 10000
+      filterTtlMinutes: 15
       options:
+        Dir: /tmp/relayer/data
         InMemory: true
-        DetectConflicts: true
+        DetectConflicts: false
 indexer:
   sourceFolder: "test"
   subFolderBatchSize: 10000
@@ -66,18 +61,15 @@ indexer:
 const waitForFileIndefinitelyYml = `
 db:
   badger:
-      gcIntervalSeconds: 1
-      iterationTimeoutSeconds: 5
-      iterationMaxItems: 10000
-      logFilterTtlMinutes: 15
-      index:
-        maxJumps: 1000
-        maxRangeScanners: 2
-        maxValueFetchers: 2
-        keysOnly: false
+    core:
+      gcIntervalSeconds: 10
+      scanRangeThreshold: 3000
+      maxScanIterators: 10000
+      filterTtlMinutes: 15
       options:
+        Dir: /tmp/relayer/data
         InMemory: true
-        DetectConflicts: true
+        DetectConflicts: false
 indexer:
   sourceFolder: "test"
   subFolderBatchSize: 10000
@@ -89,18 +81,15 @@ indexer:
 const stopsAfterMaxRetryYml = `
 db:
   badger:
-      gcIntervalSeconds: 1
-      iterationTimeoutSeconds: 5
-      iterationMaxItems: 10000
-      logFilterTtlMinutes: 15
-      index:
-        maxJumps: 1000
-        maxRangeScanners: 2
-        maxValueFetchers: 2
-        keysOnly: false
+    core:
+      gcIntervalSeconds: 10
+      scanRangeThreshold: 3000
+      maxScanIterators: 10000
+      filterTtlMinutes: 15
       options:
+        Dir: /tmp/relayer/data
         InMemory: true
-        DetectConflicts: true
+        DetectConflicts: false
 indexer:
   sourceFolder: "test"
   subFolderBatchSize: 10000
@@ -111,18 +100,15 @@ indexer:
 const removeFilesFoldersYml = `
 db:
   badger:
-      gcIntervalSeconds: 1
-      iterationTimeoutSeconds: 5
-      iterationMaxItems: 10000
-      logFilterTtlMinutes: 15
-      index:
-        maxJumps: 1000
-        maxRangeScanners: 2
-        maxValueFetchers: 2
-        keysOnly: false
+    core:
+      gcIntervalSeconds: 10
+      scanRangeThreshold: 3000
+      maxScanIterators: 10000
+      filterTtlMinutes: 15
       options:
+        Dir: /tmp/relayer/data
         InMemory: true
-        DetectConflicts: true
+        DetectConflicts: false
 indexer:
   sourceFolder: "test"
   subFolderBatchSize: 10000
@@ -133,18 +119,15 @@ indexer:
 const withToAndFromBlockYml = `
 db:
   badger:
-      gcIntervalSeconds: 1
-      iterationTimeoutSeconds: 5
-      iterationMaxItems: 10000
-      logFilterTtlMinutes: 15
-      index:
-        maxJumps: 1000
-        maxRangeScanners: 2
-        maxValueFetchers: 2
-        keysOnly: false
+    core:
+      gcIntervalSeconds: 10
+      scanRangeThreshold: 3000
+      maxScanIterators: 10000
+      filterTtlMinutes: 15
       options:
+        Dir: /tmp/relayer/data
         InMemory: true
-        DetectConflicts: true
+        DetectConflicts: false
 indexer:
   sourceFolder: "test"
   subFolderBatchSize: 10000
@@ -683,11 +666,11 @@ func initStoreHandler() *db.StoreHandler {
 }
 
 func insertBlocks(sh *db.StoreHandler) {
-	blocks := [...]*utils.Block{
-		{Sequence: GenesisBlock, Hash: utils.HexStringToHash("a"), Transactions: []*utils.Transaction{{}}},
-		{Sequence: GenesisBlock + 1, Hash: utils.HexStringToHash("b"), Transactions: []*utils.Transaction{{}, {}}},
-		{Sequence: GenesisBlock + 2, Hash: utils.HexStringToHash("c"), Transactions: []*utils.Transaction{{}, {}, {}}},
-		{Sequence: GenesisBlock + 3, Hash: utils.HexStringToHash("d"), Transactions: []*utils.Transaction{{}, {}, {}, {}}},
+	blocks := [...]*indexer.Block{
+		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(GenesisBlock), Hash: common.HexStringToHash("a"), Transactions: []*indexer.Transaction{{}}},
+		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(GenesisBlock + 1), Hash: common.HexStringToHash("b"), Transactions: []*indexer.Transaction{{}, {}}},
+		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(GenesisBlock + 2), Hash: common.HexStringToHash("c"), Transactions: []*indexer.Transaction{{}, {}, {}}},
+		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(GenesisBlock + 3), Hash: common.HexStringToHash("d"), Transactions: []*indexer.Transaction{{}, {}, {}, {}}},
 	}
 	for _, b := range blocks {
 		err := sh.InsertBlock(b)
@@ -699,7 +682,7 @@ func insertBlocks(sh *db.StoreHandler) {
 
 func createFiles(blocks []string, truncate int) {
 
-	var block *utils.Block
+	var block *indexer.Block
 	var buff []byte
 	var err error
 	var file *os.File
@@ -712,7 +695,7 @@ func createFiles(blocks []string, truncate int) {
 		}
 
 		bSize := uint64(viper.GetInt64("indexer.subFolderBatchSize"))
-		bNum := block.Height
+		bNum := block.Height.Uint64()
 		bDir := bNum / bSize * bSize
 
 		subDirName := filepath.Join(testDir, fmt.Sprintf("%d", bDir))

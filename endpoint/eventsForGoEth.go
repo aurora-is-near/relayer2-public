@@ -4,7 +4,8 @@ import (
 	"aurora-relayer-go-common/broker"
 	"aurora-relayer-go-common/endpoint"
 	eventbroker "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum/events"
-	"aurora-relayer-go-common/utils"
+	"aurora-relayer-go-common/types/event"
+	"aurora-relayer-go-common/types/request"
 	"context"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -13,16 +14,16 @@ import (
 type EventsForGoEth struct {
 	*endpoint.Endpoint
 	eventBroker broker.Broker
-	newHeadsCh  chan *utils.BlockResponse
-	logsCh      chan []*utils.LogResponse
+	newHeadsCh  chan event.Block
+	logsCh      chan event.Logs
 }
 
 func NewEventsForGoEth(ep *endpoint.Endpoint, eb broker.Broker) *EventsForGoEth {
 	return &EventsForGoEth{
 		Endpoint:    ep,
 		eventBroker: eb,
-		newHeadsCh:  make(chan *utils.BlockResponse, eventbroker.NewHeadsChSize),
-		logsCh:      make(chan []*utils.LogResponse, eventbroker.LogsChSize),
+		newHeadsCh:  make(chan event.Block, eventbroker.NewHeadsChSize),
+		logsCh:      make(chan event.Logs, eventbroker.LogsChSize),
 	}
 }
 
@@ -54,7 +55,7 @@ func (e *EventsForGoEth) NewHeads(ctx context.Context) (*rpc.Subscription, error
 }
 
 // Logs send a notification each time logs included in new imported block and match the given filter criteria.
-func (e *EventsForGoEth) Logs(ctx context.Context, subOpts utils.LogSubscriptionOptions) (*rpc.Subscription, error) {
+func (e *EventsForGoEth) Logs(ctx context.Context, subOpts request.LogSubscriptionOptions) (*rpc.Subscription, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported

@@ -4,6 +4,9 @@ import (
 	"aurora-relayer-go-common/broker"
 	"aurora-relayer-go-common/db"
 	"aurora-relayer-go-common/log"
+	"aurora-relayer-go-common/types"
+	"aurora-relayer-go-common/types/common"
+	"aurora-relayer-go-common/types/indexer"
 	"aurora-relayer-go-common/utils"
 	"encoding/json"
 	"errors"
@@ -32,12 +35,12 @@ type indexerState struct {
 	subBlockPath string
 	retryCount   uint8
 	started      bool
-	block        *utils.Block
+	block        *indexer.Block
 	stats        *indexerStats
 }
 
 type Indexer struct {
-	dbh    *db.Handler
+	dbh    db.Handler
 	l      *log.Logger
 	c      *Config
 	s      *indexerState
@@ -60,7 +63,7 @@ func New(dbh db.Handler) (*Indexer, error) {
 	if err != nil {
 		fromBlock = GenesisBlock
 	} else {
-		fromBlock = lb.Uint64()
+		fromBlock = uint64(*lb)
 		logger.Info().Msgf("latest indexed block: [%d]", fromBlock)
 		fromBlock += 1
 	}
@@ -77,8 +80,8 @@ func New(dbh db.Handler) (*Indexer, error) {
 	sb := config.FromBlock / bs * bs
 	sbp := filepath.Join(config.SourceFolder, fmt.Sprintf("%v", sb))
 	fp := filepath.Join(sbp, fmt.Sprintf("%v.json", config.FromBlock))
-	indexer := &Indexer{
-		dbh: &dbh,
+	i := &Indexer{
+		dbh: dbh,
 		l:   logger,
 		c:   config,
 		s: &indexerState{
@@ -99,7 +102,7 @@ func New(dbh db.Handler) (*Indexer, error) {
 		stopCh: make(chan bool),
 	}
 
-	return indexer, nil
+	return i, nil
 }
 
 // NewWithBroker is same as New but also sets broker for indexer. Both db.Handler and broker.Broker should not be nil.
@@ -195,7 +198,7 @@ func read(i *Indexer) processIndexerState {
 // 	On failure, retries for Config.RetryCountOnFailure and if all retries fails then stops indexer
 func insert(i *Indexer) processIndexerState {
 	i.l.Debug().Msgf("inserting block: [%d]", i.s.block.Height)
-	err := (*i.dbh).InsertBlock(i.s.block)
+	err := i.dbh.InsertBlock(i.s.block)
 	if next := i.evalError(err, insert, stop); next != nil {
 		return next
 	}
@@ -252,7 +255,7 @@ func increment(i *Indexer) processIndexerState {
 
 // stop indexer state machine.
 func stop(i *Indexer) processIndexerState {
-	lastBlock, err := (*i.dbh).BlockNumber(context.Background())
+	lastBlock, err := i.dbh.BlockNumber(context.Background())
 	if err != nil {
 		i.l.Error().Err(err).Msg("failed to get last indexed block")
 	}
@@ -264,27 +267,22 @@ func stop(i *Indexer) processIndexerState {
 // publish sends block and log data to event broker if broker is initialized, returns either increment or removeFile
 func publish(i *Indexer) processIndexerState {
 	if i.b != nil {
+		// TODO: this block can be optimized
 		i.l.Debug().Msgf("publishing block: [%d]", i.s.currBlock)
-		i.b.PublishNewHeads(i.s.block.ToResponse(true))
-		var logResponses []*utils.LogResponse
-		for txId, tx := range i.s.block.Transactions {
-			for lId, l := range tx.Logs {
-				logResponse := utils.LogResponse{
-					Removed:          false,
-					LogIndex:         utils.IntToUint256(lId),
-					TransactionIndex: utils.IntToUint256(txId),
-					TransactionHash:  tx.Hash,
-					BlockHash:        i.s.block.Hash,
-					BlockNumber:      utils.UintToUint256(i.s.block.Height),
-					Address:          l.Address,
-					Data:             l.Data,
-					Topics:           l.Topics,
-				}
-				logResponses = append(logResponses, &logResponse)
-			}
+		ctx := context.Background()
+		ctx = utils.PutChainId(ctx, i.s.block.ChainId.Uint64())
+		bn := common.UintToBN64(i.s.block.Height.Uint64())
+		block, err := i.dbh.GetBlockByNumber(ctx, bn, true)
+		if err != nil {
+			i.l.Error().Err(err) // just log, this is a best-effort operation
+		} else {
+			i.b.PublishNewHeads(block)
 		}
-		if len(logResponses) > 0 {
-			i.b.PublishLogs(logResponses)
+		logs, err := i.dbh.GetLogs(ctx, types.Filter{FromBlock: bn.Uint64(), ToBlock: bn.Uint64()}.ToLogFilter())
+		if err != nil {
+			i.l.Error().Err(err) // just log, this is a best-effort operation
+		} else {
+			i.b.PublishLogs(logs)
 		}
 	}
 	if i.c.KeepFiles {

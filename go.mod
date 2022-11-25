@@ -2,9 +2,9 @@ module aurora-relayer-go
 
 go 1.18
 
-//replace aurora-relayer-go-common => ../aurora-relayer-go-common
+replace aurora-relayer-go-common => ../aurora-relayer-go-common
 
-replace aurora-relayer-go-common => github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20221122071546-d3466d36df77
+//replace aurora-relayer-go-common => github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20221122071546-d3466d36df77
 
 // The following package had a conflicting dependency.
 // Fixed by pointing the dependency to the latest version tag.

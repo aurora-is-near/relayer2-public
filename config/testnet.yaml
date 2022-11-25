@@ -5,34 +5,17 @@ logger:
   logToFile: true
 db:
   badger:
+    core:
       gcIntervalSeconds: 10
-      iterationTimeoutSeconds: 5
-      iterationMaxItems: 10000
-      logFilterTtlMinutes: 15
-      excludeTxn:
-        - "eth_accounts"
-        - "eth_coinbase"
-        - "eth_chainId"
-        - "eth_protocolVersion"
-        - "eth_hashrate"
-        - "eth_mining"
-        - "eth_syncing"
-        - "web3_clientVersion"
-        - "web3_sha3"
-      updateTxn:
-        - "eth_newFilter"
-        - "eth_newBlockFilter"
-        - "eth_uninstallFilter"
-      index:
-        maxJumps: 1000
-        maxRangeScanners: 4
-        maxValueFetchers: 4
-        keysOnly: false
+      scanRangeThreshold: 3000
+      maxScanIterators: 10000
+      filterTtlMinutes: 15
       options:
         Dir: /tmp/relayer/data
         InMemory: false
         DetectConflicts: false
 endpoint:
+  chainID: 1313161554
   engine:
     nearNetworkID: testnet
     nearNodeURL: https://archival-rpc.testnet.near.org
@@ -52,11 +35,7 @@ endpoint:
   proxyEndpoints:
     url: "https://testnet.aurora.dev:443"
     endpoints:
-    - eth_getBlockByNumber
-    - eth_getBlockByHash
-    - eth_blockNumber
-    - eth_getTransactionByHash
-    - web3_clientVersion
+    -
   disabledEndpoints:
     -
 rpcNode:
