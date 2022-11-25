@@ -1,0 +1,81 @@
+logger:
+  level: info
+  filePath: /tmp/relayer/log/relayer.log
+  logToConsole: true
+  logToFile: true
+db:
+  badger:
+      gcIntervalSeconds: 10
+      iterationTimeoutSeconds: 5
+      iterationMaxItems: 10000
+      logFilterTtlMinutes: 15
+      excludeTxn:
+        - "eth_accounts"
+        - "eth_coinbase"
+        - "eth_chainId"
+        - "eth_protocolVersion"
+        - "eth_hashrate"
+        - "eth_mining"
+        - "eth_syncing"
+        - "web3_clientVersion"
+        - "web3_sha3"
+      updateTxn:
+        - "eth_newFilter"
+        - "eth_newBlockFilter"
+        - "eth_uninstallFilter"
+      index:
+        maxJumps: 1000
+        maxRangeScanners: 4
+        maxValueFetchers: 4
+        keysOnly: false
+      options:
+        Dir: /tmp/relayer/data
+        InMemory: false
+        DetectConflicts: false
+endpoint:
+  engine:
+    nearNetworkID: mainnet
+    nearNodeURL: https://archival-rpc.mainnet.near.org
+    signer:
+    signerKey:
+    asyncSendRawTxs: false
+    minGasPrice: 0
+    minGasLimit: 21000
+    gasForNearTxsCall: 300000000000000
+    depositForNearTxsCall: 0
+    retryWaitTimeMsForNearTxsCall: 3000
+    retryNumberForNearTxsCall: 3
+  eth:
+    protocolVersion: 0x41
+    hashrate: 0
+    gas: 6721975
+  proxyEndpoints:
+    url: "https://mainnet.aurora.dev:443"
+    endpoints:
+    - eth_getBlockByNumber
+    - eth_getBlockByHash
+    - eth_blockNumber
+    - eth_getTransactionByHash
+    - web3_clientVersion
+  disabledEndpoints:
+    -
+rpcNode:
+  geth:
+    HTTPHost: localhost
+    HTTPPort: 8545
+    HTTPVirtualHosts:
+      - localhost
+    HTTPModules:
+      - "net"
+      - "web3"
+      - "eth"
+    WSHost: localhost
+    WSPort: 8546
+    WSModules:
+      - "net"
+      - "web3"
+      - "eth"
+indexer:
+  sourceFolder: "../borealis-engine-lib/output/refiner"
+  subFolderBatchSize: 10000
+  keepFiles: false
