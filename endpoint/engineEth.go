@@ -180,19 +180,18 @@ func (e *EngineEth) call(_ context.Context, txs engine.TransactionForCall, numbe
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) SendRawTransaction(ctx context.Context, txs common.Uint256) (*string, error) {
+func (e *EngineEth) SendRawTransaction(ctx context.Context, txs common.DataVec) (*string, error) {
 	return endpoint.Process(ctx, "eth_sendRawTransaction", e.Endpoint, func(ctx context.Context) (*string, error) {
 		return e.sendRawTransaction(ctx, txs)
 	}, txs)
 }
 
-func (e *EngineEth) sendRawTransaction(_ context.Context, txs common.Uint256) (*string, error) {
-	txsBytes := txs.Bytes()
+func (e *EngineEth) sendRawTransaction(_ context.Context, txs common.DataVec) (*string, error) {
 	// Call either async or sync version of sendRawTransaction according to the configuration parameter
 	if e.Config.EngineConfig.AsyncSendRawTxs {
-		return e.asyncSendRawTransaction(txsBytes)
+		return e.asyncSendRawTransaction(txs)
 	} else {
-		return e.syncSendRawTransaction(txsBytes)
+		return e.syncSendRawTransaction(txs)
 	}
 }
 
