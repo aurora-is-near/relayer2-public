@@ -15,7 +15,7 @@ db:
         InMemory: false
         DetectConflicts: false
 endpoint:
-  chainID: 1313161554
+  chainID: 1313161555
   engine:
     nearNetworkID: testnet
     nearNodeURL: https://archival-rpc.testnet.near.org
@@ -55,6 +55,10 @@ rpcNode:
       - "web3"
       - "eth"
 indexer:
-  sourceFolder: "../borealis-engine-lib/output/refiner"
-  subFolderBatchSize: 10000
-  keepFiles: false
+  sourceFolder: /tmp/relayer/json/
+  subFolderBatchSize: 10000   # should match with Aurora Refiner App batch size, see https://github.com/aurora-is-near/borealis-engine-lib
+  keepFiles: true
+  fromBlock: 9820210          # 9820210 = Aurora Genesis
+  toBlock: 0                  # 0 = indefinite
+  retryCountOnFailure: 10
+  waitForBlocksMs: 500
