@@ -5,34 +5,17 @@ logger:
   logToFile: true
 db:
   badger:
+    core:
       gcIntervalSeconds: 10
-      iterationTimeoutSeconds: 5
-      iterationMaxItems: 10000
-      logFilterTtlMinutes: 15
-      excludeTxn:
-        - "eth_accounts"
-        - "eth_coinbase"
-        - "eth_chainId"
-        - "eth_protocolVersion"
-        - "eth_hashrate"
-        - "eth_mining"
-        - "eth_syncing"
-        - "web3_clientVersion"
-        - "web3_sha3"
-      updateTxn:
-        - "eth_newFilter"
-        - "eth_newBlockFilter"
-        - "eth_uninstallFilter"
-      index:
-        maxJumps: 1000
-        maxRangeScanners: 4
-        maxValueFetchers: 4
-        keysOnly: false
+      scanRangeThreshold: 3000
+      maxScanIterators: 10000
+      filterTtlMinutes: 15
       options:
         Dir: /tmp/relayer/data
         InMemory: false
         DetectConflicts: false
 endpoint:
+  chainID: 1313161554
   engine:
     nearNetworkID: mainnet
     nearNodeURL: https://archival-rpc.mainnet.near.org
@@ -52,11 +35,7 @@ endpoint:
   proxyEndpoints:
     url: "https://mainnet.aurora.dev:443"
     endpoints:
-    - eth_getBlockByNumber
-    - eth_getBlockByHash
-    - eth_blockNumber
-    - eth_getTransactionByHash
-    - web3_clientVersion
+    -
   disabledEndpoints:
     -
 rpcNode:
@@ -76,6 +55,10 @@ rpcNode:
       - "web3"
       - "eth"
 indexer:
-  sourceFolder: "../borealis-engine-lib/output/refiner"
-  subFolderBatchSize: 10000
-  keepFiles: false
+  sourceFolder: /tmp/relayer/json/
+  subFolderBatchSize: 10000   # should match with Aurora refiner batch size, see https://github.com/aurora-is-near/borealis-engine-lib
+  keepFiles: true
+  fromBlock: 9820210          # 9820210 = Aurora Genesis
+  toBlock: 0                  # 0 = indefinite
+  retryCountOnFailure: 10
+  waitForBlocksMs: 500
