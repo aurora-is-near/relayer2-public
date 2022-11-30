@@ -16,6 +16,7 @@ db:
         DetectConflicts: false
 endpoint:
   chainID: 1313161554
+  filterFilePath: config/filter.yaml
   engine:
     nearNetworkID: mainnet
     nearNodeURL: https://archival-rpc.mainnet.near.org
