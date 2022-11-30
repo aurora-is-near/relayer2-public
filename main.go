@@ -17,7 +17,9 @@ import (
 	"syscall"
 
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func main() {
@@ -95,6 +97,8 @@ func main() {
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed to start json-rpc server")
 		}
+		// Stop geth's p2p server
+		rpcNode.Server().Stop()
 		defer rpcNode.Close()
 
 		var indxr *indexer.Indexer
@@ -108,6 +112,13 @@ func main() {
 		}
 		indxr.Start()
 		defer indxr.Close()
+
+		// Set the handlers for components that needs to updated after config changes
+		viper.OnConfigChange(func(e fsnotify.Event) {
+			logger.HandleConfigChange()
+			rpcNode.HandleConfigChange()
+			baseEndpoint.HandleConfigChange()
+		})
 
 		sig := make(chan os.Signal)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
