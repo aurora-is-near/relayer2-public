@@ -61,7 +61,7 @@ func New(dbh db.Handler) (*Indexer, error) {
 	var fromBlock uint64
 	lb, err := dbh.BlockNumber(context.Background())
 	if err != nil {
-		fromBlock = GenesisBlock
+		fromBlock = config.GenesisBlock
 	} else {
 		fromBlock = uint64(*lb)
 		logger.Info().Msgf("latest indexed block: [%d]", fromBlock)

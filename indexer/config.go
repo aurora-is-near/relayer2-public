@@ -8,10 +8,9 @@ import (
 )
 
 const (
-	GenesisBlock = 9820210
-
+	DefaultGenesisBlock        = 9820210
 	DefaultKeepFiles           = false
-	DefaultFromBlock           = GenesisBlock
+	DefaultFromBlock           = DefaultGenesisBlock
 	DefaultToBlock             = 0
 	DefaultSubFolderBatchSize  = 10000
 	DefaultRetryCountOnFailure = 10
@@ -25,6 +24,7 @@ type Config struct {
 	KeepFiles           bool   `mapstructure:"keepFiles"`
 	RetryCountOnFailure uint8  `mapstructure:"retryCountOnFailure"`
 	SubFolderBatchSize  uint16 `mapstructure:"subFolderBatchSize"`
+	GenesisBlock        uint64 `mapstructure:"genesisBlock"`
 	FromBlock           uint64 `mapstructure:"fromBlock"`
 	ToBlock             uint64 `mapstructure:"toBlock"`
 	SourceFolder        string `mapstructure:"sourceFolder"`
@@ -35,6 +35,7 @@ func defaultConfig() *Config {
 	return &Config{
 		KeepFiles:           DefaultKeepFiles,
 		RetryCountOnFailure: DefaultRetryCountOnFailure,
+		GenesisBlock:        DefaultGenesisBlock,
 		FromBlock:           DefaultFromBlock, // inclusive
 		ToBlock:             DefaultToBlock,   // exclusive
 		SubFolderBatchSize:  DefaultSubFolderBatchSize,
