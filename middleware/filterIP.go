@@ -9,21 +9,29 @@ import (
 	"strings"
 )
 
+const (
+	configPath            = "endpoint.filterFilePath"
+	defaultFilterFilePath = "config/filter.yaml"
+)
+
 type filter struct {
 	policy string
 	list   []*net.IPNet
 }
 
 func FilterIP(next http.Handler) http.Handler {
+
+	// use global viper to get filter config file path
+	filterFile := viper.GetString(configPath)
+	if filterFile == "" {
+		filterFile = defaultFilterFilePath
+	}
+
 	// not using global viper, see;
 	// https://github.com/spf13/viper/issues/442
 	// https://github.com/spf13/viper/issues/631
 	v := viper.New()
-	v.SetConfigName("filter")
-	v.SetConfigType("yaml")
-	v.AddConfigPath(".")
-	v.AddConfigPath("conf/")
-	v.AddConfigPath("/etc/aurora/relayer/")
+	v.SetConfigFile(filterFile)
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {

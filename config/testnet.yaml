@@ -16,6 +16,7 @@ db:
         DetectConflicts: false
 endpoint:
   chainID: 1313161555
+  filterFilePath: config/filter.yaml
   engine:
     nearNetworkID: testnet
     nearNodeURL: https://archival-rpc.testnet.near.org
