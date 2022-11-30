@@ -1,7 +1,7 @@
 logger:
   level: info
   filePath: /tmp/relayer/log/relayer.log
-  logToConsole: true
+  logToConsole: false
   logToFile: true
 db:
   badger:
@@ -49,7 +49,7 @@ rpcNode:
       - "web3"
       - "eth"
     WSHost: localhost
-    WSPort: 8546
+    WSPort: 8545
     WSModules:
       - "net"
       - "web3"
@@ -58,7 +58,8 @@ indexer:
   sourceFolder: /tmp/relayer/json/
   subFolderBatchSize: 10000   # should match with Aurora refiner batch size, see https://github.com/aurora-is-near/borealis-engine-lib
   keepFiles: true
-  fromBlock: 9820210          # 9820210 = Aurora Genesis
+  genesisBlock: 9820210       # 9820210 = Aurora Genesis
+  fromBlock: 9820210          # cannot be lower than Genesis
   toBlock: 0                  # 0 = indefinite
   retryCountOnFailure: 10
   waitForBlocksMs: 500

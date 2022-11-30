@@ -219,7 +219,7 @@ func TestConfiguration(t *testing.T) {
 				i, err := New(args[0].(*db.StoreHandler))
 				return i.c.FromBlock, err
 			},
-			want:        uint64(GenesisBlock),
+			want:        uint64(DefaultGenesisBlock),
 			errContains: "",
 		},
 		{
@@ -259,7 +259,7 @@ func TestConfiguration(t *testing.T) {
 				i, err := New(args[0].(*db.StoreHandler))
 				return i.c.FromBlock, err
 			},
-			want:        uint64(GenesisBlock+3) + 1,
+			want:        uint64(DefaultGenesisBlock+3) + 1,
 			errContains: "",
 		},
 	}
@@ -667,10 +667,10 @@ func initStoreHandler() *db.StoreHandler {
 
 func insertBlocks(sh *db.StoreHandler) {
 	blocks := [...]*indexer.Block{
-		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(GenesisBlock), Hash: common.HexStringToHash("a"), Transactions: []*indexer.Transaction{{}}},
-		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(GenesisBlock + 1), Hash: common.HexStringToHash("b"), Transactions: []*indexer.Transaction{{}, {}}},
-		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(GenesisBlock + 2), Hash: common.HexStringToHash("c"), Transactions: []*indexer.Transaction{{}, {}, {}}},
-		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(GenesisBlock + 3), Hash: common.HexStringToHash("d"), Transactions: []*indexer.Transaction{{}, {}, {}, {}}},
+		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(DefaultGenesisBlock), Hash: common.HexStringToHash("a"), Transactions: []*indexer.Transaction{{}}},
+		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(DefaultGenesisBlock + 1), Hash: common.HexStringToHash("b"), Transactions: []*indexer.Transaction{{}, {}}},
+		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(DefaultGenesisBlock + 2), Hash: common.HexStringToHash("c"), Transactions: []*indexer.Transaction{{}, {}, {}}},
+		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(DefaultGenesisBlock + 3), Hash: common.HexStringToHash("d"), Transactions: []*indexer.Transaction{{}, {}, {}, {}}},
 	}
 	for _, b := range blocks {
 		err := sh.InsertBlock(b)
