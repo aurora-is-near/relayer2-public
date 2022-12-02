@@ -50,6 +50,7 @@ func main() {
 		baseEndpoint.WithProcessor(processor.NewProxy())
 
 		ethEndpoint := commonEndpoint.NewEth(baseEndpoint)
+		netEndpoint := commonEndpoint.NewNet(baseEndpoint)
 		web3Endpoint := commonEndpoint.NewWeb3(baseEndpoint)
 
 		rpcNode, err := goEthereum.New()
@@ -62,6 +63,11 @@ func main() {
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   commonEndpoint.NewEthProcessorAware(ethEndpoint),
+		})
+		rpcAPIs = append(rpcAPIs, rpc.API{
+			Namespace: "net",
+			Version:   "1.0",
+			Service:   commonEndpoint.NewNetProcessorAware(netEndpoint),
 		})
 		rpcAPIs = append(rpcAPIs, rpc.API{
 			Namespace: "web3",

@@ -15,7 +15,6 @@ db:
         InMemory: false
         DetectConflicts: false
 endpoint:
-  chainID: 1313161555
   filterFilePath: config/filter.yaml
   engine:
     nearNetworkID: testnet
@@ -32,7 +31,8 @@ endpoint:
   eth:
     protocolVersion: 0x41
     hashrate: 0
-    gas: 6721975
+    gasEstimate: 0x6691b7
+    gasPrice: 0x42c1d80
   proxyEndpoints:
     url: "https://testnet.aurora.dev:443"
     endpoints:

@@ -194,8 +194,7 @@ func TestNetEndpointsCompare(t *testing.T) {
 	if err != nil {
 		t.Error("Version request error:", err)
 	}
-	// Format the received response to compare with the base result
-	respHex := resp.Text(10)
+	respHex := *resp
 
 	var respExpected string
 	err = rpcClientBase.CallContext(ctx, &respExpected, "net_version")

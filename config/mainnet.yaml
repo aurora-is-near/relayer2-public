@@ -15,7 +15,6 @@ db:
         InMemory: false
         DetectConflicts: false
 endpoint:
-  chainID: 1313161554
   filterFilePath: config/filter.yaml
   engine:
     nearNetworkID: mainnet
@@ -32,11 +31,12 @@ endpoint:
   eth:
     protocolVersion: 0x41
     hashrate: 0
-    gas: 6721975
+    gasEstimate: 0x6691b7
+    gasPrice: 0x42c1d80
   proxyEndpoints:
     url: "https://mainnet.aurora.dev:443"
     endpoints:
-    -
+    - eth_gasEstimate
   disabledEndpoints:
     -
 rpcNode:
