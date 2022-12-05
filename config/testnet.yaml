@@ -12,6 +12,7 @@ db:
       filterTtlMinutes: 15
       options:
         Dir: /tmp/relayer/data
+        ValueDir: /tmp/relayer/data
         InMemory: false
         DetectConflicts: false
 endpoint:
