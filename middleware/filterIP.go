@@ -4,6 +4,7 @@ import (
 	"aurora-relayer-go-common/log"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
+	"io/fs"
 	"net"
 	"net/http"
 	"strings"
@@ -34,7 +35,7 @@ func FilterIP(next http.Handler) http.Handler {
 	v.SetConfigFile(filterFile)
 
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		if _, ok := err.(*fs.PathError); !ok {
 			panic(err)
 		} else {
 			log.Log().Warn().Msg("config file filter.yml not found")
