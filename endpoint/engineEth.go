@@ -206,8 +206,9 @@ func (e *EngineEth) asyncSendRawTransaction(txsBytes []byte) (*string, error) {
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
-
-	return resp, nil
+	txsHash := "0x" + hex.EncodeToString(crypto.Keccak256(txsBytes))
+	e.Logger.Info().Msgf("Near txs hash is: %s, for Eth txs hash: %s", *resp, txsHash)
+	return &txsHash, nil
 }
 
 // syncSendRawTransaction submits a raw transaction to engine synchronously
