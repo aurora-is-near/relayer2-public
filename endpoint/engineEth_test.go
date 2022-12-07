@@ -41,7 +41,7 @@ const (
 	txsInvalidRawDataStr = "0xf86d8202fe80825208949d9bd1909550cb8beed9ce7b291dc4dacd85d39d888ac7230489e8000080849c8a82c9a0f17bc4738b358e045850ede1ee86afd8b4cdc58789eda6bf5fe12d2b364e0816a00787a98813e68a58ddcef2cd0b2dd5b90785c32726baa27d3b13e9da299"
 	txsLowGasPriceStr    = "0xf86a820315808259d8949d9bd1909550cb8beed9ce7b291dc4dacd85d39d85e8d4a5100080849c8a82caa09b3661dbc1cdc757d0f566c96e08718033196ef6293962b0a28199494331ba9fa0287398e2db4c3ff130f7beafbcd1ad763df70549724b14db8686fbcf2639b699"
 	txsLowGasLimitStr    = "0xf8688203158064949d9bd1909550cb8beed9ce7b291dc4dacd85d39d85e8d4a5100080849c8a82caa02e3db9cf6ca6ef9f164ff537f1894e2fe981c4b65e29bf899da2a08f1fac5df4a023957b8b64c799da9161f47bee9d1b72cb55e5663b54b1b6190f3485c652dd76"
-	timeoutSec           = 30
+	timeoutSec           = 60
 )
 
 const engineEthTestFailYaml1 = `
@@ -223,13 +223,14 @@ func TestEthEndpointsCompare(t *testing.T) {
 		args   []interface{}
 	}{
 		{"test eth_chainId", "eth_chainId", "ChainId", []interface{}{ctx}},
-		{"test eth_getCode", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, SafeBlockNumber}},
-		{"test eth_getCode", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, FinalizedBlockNumber}},
-		{"test eth_getCode", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, PendingBlockNumber}},
-		{"test eth_getCode", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, LatestBlockNumber}},
-		{"test eth_getBalance", "eth_getBalance", "GetBalance", []interface{}{ctx, fromAddr, LatestBlockNumber}},
-		{"test eth_getTransactionCount", "eth_getTransactionCount", "GetTransactionCount", []interface{}{ctx, fromAddr, LatestBlockNumber}},
-		{"test eth_getStorageAt", "eth_getStorageAt", "GetStorageAt", []interface{}{ctx, contractAddr, common.IntToUint256(0), LatestBlockNumber}},
+		{"test eth_getCode with EOA and safe block num", "eth_getCode", "GetCode", []interface{}{ctx, toAddr, &SafeBlockNumber}},
+		{"test eth_getCode with safe block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &SafeBlockNumber}},
+		{"test eth_getCode with finalized block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &FinalizedBlockNumber}},
+		{"test eth_getCode with pending block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &PendingBlockNumber}},
+		{"test eth_getCode with latest block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &LatestBlockNumber}},
+		{"test eth_getBalance with latest block num", "eth_getBalance", "GetBalance", []interface{}{ctx, fromAddr, &LatestBlockNumber}},
+		{"test eth_getTransactionCount with latest block num", "eth_getTransactionCount", "GetTransactionCount", []interface{}{ctx, fromAddr, &LatestBlockNumber}},
+		{"test eth_getStorageAt with latest block num", "eth_getStorageAt", "GetStorageAt", []interface{}{ctx, contractAddr, common.IntToUint256(0), &LatestBlockNumber}},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
@@ -246,7 +247,7 @@ func TestEthEndpointsCompare(t *testing.T) {
 			if err != nil {
 				t.Log(d.api, " client base error:", err)
 			}
-			expectedUint256 := common.Uint256FromHex(expectedStr)
+
 			// Call the target api
 			resp, err := Invoke(ctx, engineEth, d.method, d.args...)
 			if err != nil {
@@ -255,8 +256,22 @@ func TestEthEndpointsCompare(t *testing.T) {
 			// Compare the retrieved response and expected result
 			switch v := resp.(type) {
 			case *common.Uint256:
-				if v.Cmp(expectedUint256) != 0 {
+				// leading zeros should be checked and removed (if any)
+				tmpStr := ""
+				for expectedStr != tmpStr {
+					tmpStr = expectedStr
+					expectedStr = "0x" + strings.TrimPrefix(expectedStr[2:len(expectedStr)-1], "0") + expectedStr[len(expectedStr)-1:]
+				}
+				expectedUint256, err := common.Uint256FromHex(expectedStr)
+				if err != nil {
+					t.Errorf("error while decoding string to Uint256: %v", err)
+				}
+				if v.Cmp(*expectedUint256) != 0 {
 					t.Errorf("incorrect response: expected 0x%s, got 0x%s", expectedUint256.Text(16), v.Text(16))
+				}
+			case *string:
+				if *v != expectedStr {
+					t.Errorf("incorrect response: expected %s, got %s", expectedStr, *v)
 				}
 			default:
 				t.Errorf("incorrect type in response")
