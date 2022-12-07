@@ -71,23 +71,23 @@ func (e *EngineEth) chainId(_ context.Context) (*common.Uint256, error) {
 	return getUint256ResultFromEngineResponse(resp)
 }
 
-// GetCode returns code at a given address
+// GetCode returns the compiled smart contract code, if any, at a given address
 //
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) GetCode(ctx context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
-	return endpoint.Process(ctx, "eth_getCode", e.Endpoint, func(ctx context.Context) (*common.Uint256, error) {
+func (e *EngineEth) GetCode(ctx context.Context, address common.Address, number *common.BN64) (*string, error) {
+	return endpoint.Process(ctx, "eth_getCode", e.Endpoint, func(ctx context.Context) (*string, error) {
 		return e.getCode(ctx, address, number)
 	}, address, number)
 }
 
-func (e *EngineEth) getCode(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
+func (e *EngineEth) getCode(_ context.Context, address common.Address, number *common.BN64) (*string, error) {
 	resp, err := e.signer.ViewFunction(accountId, "get_code", address.Bytes(), common.BN64ToInt64(number))
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
-	return getUint256ResultFromEngineResponse(resp)
+	return getStringResultFromEngineResponse(resp)
 }
 
 // GetBalance returns the balance of the account of given address
@@ -253,7 +253,16 @@ func getUint256ResultFromEngineResponse(respArg interface{}) (*common.Uint256, e
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
-	return engineResult.ToResponse()
+	return engineResult.ToUint256Response()
+}
+
+// getStringResultFromEngineResponse gets the return value from engine and converts it to string format
+func getStringResultFromEngineResponse(respArg interface{}) (*string, error) {
+	engineResult, err := engine.NewQueryResult(respArg)
+	if err != nil {
+		return nil, &errs.GenericError{Err: err}
+	}
+	return engineResult.ToStringResponse()
 }
 
 // getCallResultFromEngineResponse gets the return value from engine and converts it to string format
