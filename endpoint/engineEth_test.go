@@ -321,7 +321,7 @@ func TestEthEndpointsStatic(t *testing.T) {
 			case *string:
 				if d.expectedResult == "anyHash" {
 					tmp := *v
-					if len(tmp) != 44 {
+					if len(tmp) != 66 {
 						t.Errorf("incorrect response: expected %s, got %s", d.expectedResult, *v)
 					}
 				} else if *v != d.expectedResult {
