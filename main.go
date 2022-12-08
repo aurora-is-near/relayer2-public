@@ -52,6 +52,7 @@ func main() {
 		ethEndpoint := commonEndpoint.NewEth(baseEndpoint)
 		netEndpoint := commonEndpoint.NewNet(baseEndpoint)
 		web3Endpoint := commonEndpoint.NewWeb3(baseEndpoint)
+		parityEnpoint := commonEndpoint.NewParity(baseEndpoint)
 
 		rpcNode, err := goEthereum.New()
 		if err != nil {
@@ -73,6 +74,11 @@ func main() {
 			Namespace: "web3",
 			Version:   "1.0",
 			Service:   commonEndpoint.NewWeb3ProcessorAware(web3Endpoint),
+		})
+		rpcAPIs = append(rpcAPIs, rpc.API{
+			Namespace: "parity",
+			Version:   "1.0",
+			Service:   commonEndpoint.NewParityProcessorAware(parityEnpoint),
 		})
 
 		eventsEndpoint := endpoint.NewEventsForGoEth(baseEndpoint, rpcNode.Broker)
