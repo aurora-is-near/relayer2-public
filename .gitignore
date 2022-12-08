@@ -19,3 +19,6 @@
 
 # Tmp test folder for unit tests
 */test/**
+
+# Build artifacts
+**/out/*
