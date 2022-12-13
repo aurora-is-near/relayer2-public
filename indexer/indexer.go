@@ -186,6 +186,7 @@ func read(i *Indexer) processIndexerState {
 	if next := i.evalError(err, read, stop); next != nil {
 		return next
 	}
+
 	err = json.Unmarshal(buff, &i.s.block)
 	if next := i.evalError(err, read, stop); next != nil {
 		return next
@@ -270,8 +271,8 @@ func publish(i *Indexer) processIndexerState {
 		// TODO: this block can be optimized
 		i.l.Debug().Msgf("publishing block: [%d]", i.s.currBlock)
 		ctx := context.Background()
-		ctx = utils.PutChainId(ctx, i.s.block.ChainId.Uint64())
-		bn := common.UintToBN64(i.s.block.Height.Uint64())
+		ctx = utils.PutChainId(ctx, i.s.block.ChainId)
+		bn := common.UintToBN64(i.s.block.Height)
 		block, err := i.dbh.GetBlockByNumber(ctx, bn, true)
 		if err != nil {
 			i.l.Error().Err(err) // just log, this is a best-effort operation

@@ -21,6 +21,7 @@ require (
 
 require (
 	github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1 // indirect
+	github.com/aurora-is-near/stream-backup v0.0.0-20221212013533-1e06e263c3f7 // indirect
 	github.com/btcsuite/btcutil v1.0.2 // indirect
 	github.com/near/borsh-go v0.3.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect

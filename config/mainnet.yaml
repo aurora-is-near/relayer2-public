@@ -37,7 +37,7 @@ endpoint:
   proxyEndpoints:
     url: "https://mainnet.aurora.dev:443"
     endpoints:
-    - eth_gasEstimate
+      - eth_gasEstimate
   disabledEndpoints:
     -
 rpcNode:
@@ -67,3 +67,8 @@ indexer:
   toBlock: 0                  # 0 = indefinite
   retryCountOnFailure: 10
   waitForBlocksMs: 500
+backupIndexer:
+  indexFromBackup: true
+  backupDir: backup/v2_mainnet_aurora_blocks
+  backupNamePrefix: v2_mainnet_aurora_blocks_
+  from: 0
