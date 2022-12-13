@@ -6,6 +6,7 @@ import (
 	"aurora-relayer-go-common/db/badger"
 	commonEndpoint "aurora-relayer-go-common/endpoint"
 	"aurora-relayer-go-common/endpoint/processor"
+	"aurora-relayer-go-common/indexer/tar"
 	"aurora-relayer-go-common/log"
 	goEthereum "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum"
 	"aurora-relayer-go/endpoint"
@@ -112,6 +113,16 @@ func main() {
 		// Stop geth's p2p server
 		rpcNode.Server().Stop()
 		defer rpcNode.Close()
+
+		var tarIndexer *tar.Indexer
+		tarIndexer, err = tar.New(handler)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to start tar indexer")
+		}
+		if tarIndexer != nil {
+			tarIndexer.Start()
+			defer tarIndexer.Close()
+		}
 
 		var indxr *indexer.Indexer
 		if rpcNode.Broker != nil {
