@@ -23,11 +23,18 @@ require (
 	github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1 // indirect
 	github.com/aurora-is-near/stream-backup v0.0.0-20221212013533-1e06e263c3f7 // indirect
 	github.com/btcsuite/btcutil v1.0.2 // indirect
+	github.com/jackc/pgio v1.0.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
+	github.com/jackc/pgtype v1.13.0 // indirect
+	github.com/jackc/pgx/v5 v5.2.0 // indirect
+	github.com/jackc/puddle/v2 v2.1.2 // indirect
 	github.com/near/borsh-go v0.3.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
 	github.com/rivo/uniseg v0.4.2 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
 
