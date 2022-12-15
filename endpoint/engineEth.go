@@ -5,6 +5,7 @@ import (
 	"aurora-relayer-go-common/types/common"
 	"aurora-relayer-go-common/types/engine"
 	errs "aurora-relayer-go-common/types/errors"
+	"aurora-relayer-go-common/utils"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -14,11 +15,6 @@ import (
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-)
-
-const (
-	// The name of the account id to call on Near
-	accountId = "aurora"
 )
 
 type EngineEth struct {
@@ -64,7 +60,7 @@ func (e *EngineEth) ChainId(ctx context.Context) (*common.Uint256, error) {
 }
 
 func (e *EngineEth) chainId(_ context.Context) (*common.Uint256, error) {
-	resp, err := e.signer.ViewFunction(accountId, "get_chain_id", []byte{}, nil)
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_chain_id", []byte{}, nil)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
@@ -83,7 +79,7 @@ func (e *EngineEth) GetCode(ctx context.Context, address common.Address, number 
 }
 
 func (e *EngineEth) getCode(_ context.Context, address common.Address, number *common.BN64) (*string, error) {
-	resp, err := e.signer.ViewFunction(accountId, "get_code", address.Bytes(), common.BN64ToInt64(number))
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_code", address.Bytes(), common.BN64ToInt64(number))
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
@@ -102,7 +98,7 @@ func (e *EngineEth) GetBalance(ctx context.Context, address common.Address, numb
 }
 
 func (e *EngineEth) getBalance(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
-	resp, err := e.signer.ViewFunction(accountId, "get_balance", address.Bytes(), common.BN64ToInt64(number))
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_balance", address.Bytes(), common.BN64ToInt64(number))
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
@@ -121,7 +117,7 @@ func (e *EngineEth) GetTransactionCount(ctx context.Context, address common.Addr
 }
 
 func (e *EngineEth) getTransactionCount(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
-	resp, err := e.signer.ViewFunction(accountId, "get_nonce", address.Bytes(), common.BN64ToInt64(number))
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_nonce", address.Bytes(), common.BN64ToInt64(number))
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
@@ -145,7 +141,7 @@ func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, stor
 		return nil, &errs.GenericError{Err: err}
 	}
 
-	resp, err := e.signer.ViewFunction(accountId, "get_storage_at", argsBuf, common.BN64ToInt64(number))
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_storage_at", argsBuf, common.BN64ToInt64(number))
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
@@ -168,7 +164,7 @@ func (e *EngineEth) call(_ context.Context, txs engine.TransactionForCall, numbe
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
-	resp, err := e.signer.ViewFunction(accountId, "view", argsBuf, common.BN64ToInt64(number))
+	resp, err := e.signer.ViewFunction(utils.AccountId, "view", argsBuf, common.BN64ToInt64(number))
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
@@ -221,7 +217,7 @@ func (e *EngineEth) syncSendRawTransaction(txsBytes []byte) (*string, error) {
 
 	txsHash := crypto.Keccak256(txsBytes)
 	amount := e.Config.EngineConfig.DepositForNearTxsCall
-	resp, err := e.signer.FunctionCall(accountId, "submit", txsBytes, e.Config.EngineConfig.GasForNearTxsCall, *amount)
+	resp, err := e.signer.FunctionCall(utils.AccountId, "submit", txsBytes, e.Config.EngineConfig.GasForNearTxsCall, *amount)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
@@ -236,7 +232,7 @@ func (e *EngineEth) sendRawTransactionWithRetry(txsBytes []byte) (*string, error
 	retryNumber := e.Config.EngineConfig.RetryNumberForNearTxsCall
 
 	for i := 0; i < retryNumber; i++ {
-		resp, err := e.signer.FunctionCallAsync(accountId, "submit", txsBytes, gas, *amount)
+		resp, err := e.signer.FunctionCallAsync(utils.AccountId, "submit", txsBytes, gas, *amount)
 		if err == nil {
 			return &resp, nil
 		}

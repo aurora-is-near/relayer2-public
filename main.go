@@ -6,6 +6,7 @@ import (
 	"aurora-relayer-go-common/db/badger"
 	commonEndpoint "aurora-relayer-go-common/endpoint"
 	"aurora-relayer-go-common/endpoint/processor"
+	"aurora-relayer-go-common/indexer/prehistory"
 	"aurora-relayer-go-common/indexer/tar"
 	"aurora-relayer-go-common/log"
 	goEthereum "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum"
@@ -135,6 +136,15 @@ func main() {
 		}
 		indxr.Start()
 		defer indxr.Close()
+
+		preIndxr, err := prehistory.New(handler)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to start indexer")
+		}
+		if preIndxr != nil {
+			preIndxr.Start()
+			defer preIndxr.Close()
+		}
 
 		// Set the handlers for components that needs to updated after config changes
 		viper.OnConfigChange(func(e fsnotify.Event) {
