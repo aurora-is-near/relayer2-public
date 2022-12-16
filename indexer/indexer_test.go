@@ -3,18 +3,19 @@ package indexer
 import (
 	"aurora-relayer-go-common/db"
 	"aurora-relayer-go-common/db/badger"
-	"aurora-relayer-go-common/types/common"
 	"aurora-relayer-go-common/types/indexer"
+	"aurora-relayer-go-common/types/primitives"
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 const testDir = "test"
@@ -667,10 +668,10 @@ func initStoreHandler() *db.StoreHandler {
 
 func insertBlocks(sh *db.StoreHandler) {
 	blocks := [...]*indexer.Block{
-		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(DefaultGenesisBlock), Hash: common.HexStringToHash("a"), Transactions: []*indexer.Transaction{{}}},
-		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(DefaultGenesisBlock + 1), Hash: common.HexStringToHash("b"), Transactions: []*indexer.Transaction{{}, {}}},
-		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(DefaultGenesisBlock + 2), Hash: common.HexStringToHash("c"), Transactions: []*indexer.Transaction{{}, {}, {}}},
-		{ChainId: common.IntToUint64(1313161554), Height: common.IntToUint64(DefaultGenesisBlock + 3), Hash: common.HexStringToHash("d"), Transactions: []*indexer.Transaction{{}, {}, {}, {}}},
+		{ChainId: 1313161554, Height: DefaultGenesisBlock, Hash: primitives.Data32FromHex("a"), Transactions: []*indexer.Transaction{{}}},
+		{ChainId: 1313161554, Height: (DefaultGenesisBlock + 1), Hash: primitives.Data32FromHex("b"), Transactions: []*indexer.Transaction{{}, {}}},
+		{ChainId: 1313161554, Height: (DefaultGenesisBlock + 2), Hash: primitives.Data32FromHex("c"), Transactions: []*indexer.Transaction{{}, {}, {}}},
+		{ChainId: 1313161554, Height: (DefaultGenesisBlock + 3), Hash: primitives.Data32FromHex("d"), Transactions: []*indexer.Transaction{{}, {}, {}, {}}},
 	}
 	for _, b := range blocks {
 		err := sh.InsertBlock(b)
@@ -695,7 +696,7 @@ func createFiles(blocks []string, truncate int) {
 		}
 
 		bSize := uint64(viper.GetInt64("indexer.subFolderBatchSize"))
-		bNum := block.Height.Uint64()
+		bNum := block.Height
 		bDir := bNum / bSize * bSize
 
 		subDirName := filepath.Join(testDir, fmt.Sprintf("%d", bDir))
