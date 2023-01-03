@@ -24,7 +24,7 @@ type EngineEth struct {
 
 func NewEngineEth(ep *endpoint.Endpoint) *EngineEth {
 	if ep.Config.EngineConfig.NearNetworkID == "" || ep.Config.EngineConfig.NearNodeURL == "" || ep.Config.EngineConfig.Signer == "" {
-		panic("Near settings in the config file under `endpoint->engine` should be checked")
+		ep.Logger.Fatal().Msg("Near settings in the config file under `endpoint->engine` should be checked")
 	}
 
 	// Establish engine communication and auth the near account
@@ -38,7 +38,7 @@ func NewEngineEth(ep *endpoint.Endpoint) *EngineEth {
 	nearcon := near.NewConnection(nearCfg.NodeURL)
 	nearaccount, err := near.LoadAccount(nearcon, nearCfg, ep.Config.EngineConfig.Signer)
 	if err != nil {
-		panic(err)
+		ep.Logger.Fatal().Err(err).Msg("failed to load Near account")
 	}
 
 	eEth := &EngineEth{
