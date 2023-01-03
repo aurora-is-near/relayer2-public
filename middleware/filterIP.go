@@ -36,7 +36,7 @@ func FilterIP(next http.Handler) http.Handler {
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(*fs.PathError); !ok {
-			panic(err)
+			log.Log().Fatal().Err(err).Msg("failed to read config file filter.yml")
 		} else {
 			log.Log().Warn().Msg("config file filter.yml not found")
 		}
