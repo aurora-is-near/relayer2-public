@@ -58,15 +58,16 @@ func New(dbh db.Handler) (*Indexer, error) {
 	logger := log.Log()
 	config := GetConfig()
 
-	var fromBlock uint64
-	lb, err := dbh.BlockNumber(context.Background())
-	if err != nil {
-		fromBlock = config.GenesisBlock
-	} else {
-		fromBlock = uint64(*lb)
-		logger.Info().Msgf("latest indexed block: [%d]", fromBlock)
-		fromBlock += 1
+	fromBlock := config.GenesisBlock
+	if !config.ForceReindex {
+		lb, err := dbh.BlockNumber(context.Background())
+		if err == nil && lb != nil {
+			fromBlock = uint64(*lb)
+			logger.Info().Msgf("latest indexed block: [%d]", fromBlock)
+			fromBlock += 1
+		}
 	}
+
 	if config.FromBlock < fromBlock {
 		logger.Warn().Msgf("overwriting fromBlock: [%d] as [%d]", config.FromBlock, fromBlock)
 		config.FromBlock = fromBlock
@@ -235,13 +236,25 @@ func removeFolder(i *Indexer) processIndexerState {
 }
 
 // increment prepares the indexerState for next block processing and sets indexerStats, returns;
-//	stop processIndexerState, if Config.ToBlock is specified and reached
+//	stop processIndexerState, if Config.ToBlock is specified and reached and re-indexing is disabled
 //	read processIndexerState, otherwise
 func increment(i *Indexer) processIndexerState {
 	i.s.stats.totalBlocksIndexed += 1
 	if (i.c.ToBlock > 0) && (i.c.ToBlock <= i.s.currBlock) {
-		i.l.Info().Msgf("indexing finished fromBlock: [%d], toBlock: [%d]", i.c.FromBlock, i.c.ToBlock)
-		return stop
+		if !i.c.ForceReindex {
+			i.l.Info().Msgf("indexing finished fromBlock: [%d], toBlock: [%d]", i.c.FromBlock, i.c.ToBlock)
+			return stop
+		}
+		// after re-indexing a range of blocks, continue with the latest block in db
+		lb, err := i.dbh.BlockNumber(context.Background())
+		if err != nil || lb == nil {
+			i.l.Error().Err(err).Msgf("failed to read the latest block after re-indexing")
+			return stop
+		}
+		fb := uint64(*lb)
+		i.l.Info().Msgf("re-indexing finished fromBlock: [%d], toBlock: [%d], indexing will continue fromBlock: [%d]", i.c.FromBlock, i.c.ToBlock, fb)
+		i.c.ToBlock = 0
+		i.s.currBlock = fb
 	}
 	i.s.currBlock += 1
 	i.s.subBlock = i.s.currBlock / i.s.batchSize * i.s.batchSize

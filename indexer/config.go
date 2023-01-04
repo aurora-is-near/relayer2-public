@@ -10,6 +10,7 @@ import (
 const (
 	DefaultGenesisBlock        = 9820210
 	DefaultKeepFiles           = false
+	DefaultForceReindex        = false
 	DefaultFromBlock           = DefaultGenesisBlock
 	DefaultToBlock             = 0
 	DefaultSubFolderBatchSize  = 10000
@@ -22,6 +23,7 @@ const (
 
 type Config struct {
 	KeepFiles           bool   `mapstructure:"keepFiles"`
+	ForceReindex        bool   `mapstructure:"forceReindex"`
 	RetryCountOnFailure uint8  `mapstructure:"retryCountOnFailure"`
 	SubFolderBatchSize  uint16 `mapstructure:"subFolderBatchSize"`
 	GenesisBlock        uint64 `mapstructure:"genesisBlock"`
@@ -34,6 +36,7 @@ type Config struct {
 func defaultConfig() *Config {
 	return &Config{
 		KeepFiles:           DefaultKeepFiles,
+		ForceReindex:        DefaultForceReindex,
 		RetryCountOnFailure: DefaultRetryCountOnFailure,
 		GenesisBlock:        DefaultGenesisBlock,
 		FromBlock:           DefaultFromBlock, // inclusive

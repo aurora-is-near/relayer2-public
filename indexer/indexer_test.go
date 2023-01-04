@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const numBlocksToInsert = 4
+
 const testDir = "test"
 
 const toBlockCannotBeGreaterThanFromBlockYml = `
@@ -57,6 +59,25 @@ indexer:
   subFolderBatchSize: 10000
   keepFiles: true
   fromBlock: 100
+`
+
+const fromBlockCanBeSmallerThanGenesisYaml = `
+db:
+  badger:
+    core:
+      gcIntervalSeconds: 10
+      scanRangeThreshold: 3000
+      maxScanIterators: 10000
+      filterTtlMinutes: 15
+      options:
+        Dir: /tmp/relayer/data
+        InMemory: true
+        DetectConflicts: false
+indexer:
+  sourceFolder: "test"
+  subFolderBatchSize: 10000
+  keepFiles: true
+  forceReindex: true
 `
 
 const waitForFileIndefinitelyYml = `
@@ -136,6 +157,28 @@ indexer:
   retryCountOnFailure: 3
   toBlock: 9820211
   fromBlock: 9820210
+`
+
+const withToAndFromBlockWithReindexYml = `
+db:
+  badger:
+    core:
+      gcIntervalSeconds: 10
+      scanRangeThreshold: 3000
+      maxScanIterators: 10000
+      filterTtlMinutes: 15
+      options:
+        Dir: /tmp/relayer/data
+        InMemory: true
+        DetectConflicts: false
+indexer:
+  sourceFolder: "test"
+  subFolderBatchSize: 10000
+  keepFiles: false
+  retryCountOnFailure: 3
+  toBlock: 9820211
+  fromBlock: 9820210
+  forceReindex: true
 `
 
 var blocks = []string{`
@@ -260,7 +303,28 @@ func TestConfiguration(t *testing.T) {
 				i, err := New(args[0].(*db.StoreHandler))
 				return i.c.FromBlock, err
 			},
-			want:        uint64(DefaultGenesisBlock+3) + 1,
+			want:        uint64(DefaultGenesisBlock+numBlocksToInsert) + 1,
+			errContains: "",
+		},
+		{
+			name:    "fromBlock cannot be smaller than latest indexed block if forceReindex is true",
+			enabled: true,
+			config:  fromBlockCanBeSmallerThanGenesisYaml,
+			failMsg: "fromBlock should be equal latest indexed block",
+			args:    []interface{}{&sh},
+			setup: func(args ...interface{}) {
+				initConfig(fromBlockCanBeSmallerThanGenesisYaml)
+				args[0] = initStoreHandler()
+				insertBlocks(args[0].(*db.StoreHandler))
+			},
+			teardown: func(args ...interface{}) {
+				args[0].(*db.StoreHandler).Close()
+			},
+			call: func(args ...interface{}) (interface{}, error) {
+				i, err := New(args[0].(*db.StoreHandler))
+				return i.c.FromBlock, err
+			},
+			want:        uint64(DefaultGenesisBlock),
 			errContains: "",
 		},
 	}
@@ -596,7 +660,7 @@ func TestStateTransitions(t *testing.T) {
 			name:    "increment stops if toBlock is reached",
 			enabled: true,
 			config:  withToAndFromBlockYml,
-			failMsg: "increment should return read if toBlock is and reached",
+			failMsg: "increment should return stop if toBlock is and reached",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
 				initConfig(withToAndFromBlockYml)
@@ -613,6 +677,30 @@ func TestStateTransitions(t *testing.T) {
 				return nameOfFunc(increment(i)), err
 			},
 			want:        nameOfFunc(stop),
+			errContains: "",
+		},
+		{
+			name:    "increment continues with latest block if toBlock is reached and forceReindex is true",
+			enabled: true,
+			config:  withToAndFromBlockWithReindexYml,
+			failMsg: "increment should return read if toBlock is reached and forceReindex is true",
+			args:    []interface{}{&sh},
+			setup: func(args ...interface{}) {
+				initConfig(withToAndFromBlockWithReindexYml)
+				createFiles(blocks, 0)
+				args[0] = initStoreHandler()
+				insertBlocks(args[0].(*db.StoreHandler))
+			},
+			teardown: func(args ...interface{}) {
+				args[0].(*db.StoreHandler).Close()
+				deleteFiles()
+			},
+			call: func(args ...interface{}) (interface{}, error) {
+				i, err := New(args[0].(*db.StoreHandler))
+				increment(i)
+				return nameOfFunc(increment(i)), err
+			},
+			want:        nameOfFunc(read),
 			errContains: "",
 		},
 	}
@@ -667,14 +755,26 @@ func initStoreHandler() *db.StoreHandler {
 }
 
 func insertBlocks(sh *db.StoreHandler) {
-	blocks := [...]*indexer.Block{
-		{ChainId: 1313161554, Height: DefaultGenesisBlock, Hash: primitives.Data32FromHex("a"), Transactions: []*indexer.Transaction{{}}},
-		{ChainId: 1313161554, Height: (DefaultGenesisBlock + 1), Hash: primitives.Data32FromHex("b"), Transactions: []*indexer.Transaction{{}, {}}},
-		{ChainId: 1313161554, Height: (DefaultGenesisBlock + 2), Hash: primitives.Data32FromHex("c"), Transactions: []*indexer.Transaction{{}, {}, {}}},
-		{ChainId: 1313161554, Height: (DefaultGenesisBlock + 3), Hash: primitives.Data32FromHex("d"), Transactions: []*indexer.Transaction{{}, {}, {}, {}}},
+	block := &indexer.Block{
+		ChainId:          1313161554,
+		Height:           DefaultGenesisBlock,
+		Hash:             primitives.Data32FromHex("0x0"),
+		ParentHash:       primitives.Data32FromHex("0x0"),
+		TransactionsRoot: primitives.Data32FromHex("0x0"),
+		ReceiptsRoot:     primitives.Data32FromHex("0x0"),
+		StateRoot:        primitives.Data32FromHex("0x0"),
+		Miner:            primitives.Data20FromHex("0x0"),
+		GasLimit:         primitives.QuantityFromHex("0x0"),
+		GasUsed:          primitives.QuantityFromHex("0x0"),
+		LogsBloom:        primitives.Data256FromHex("0x0"),
 	}
-	for _, b := range blocks {
-		err := sh.InsertBlock(b)
+
+	for i := 0; i < numBlocksToInsert; i++ {
+		block.Height += uint64(1)
+		hashbytes := block.Hash.Bytes()
+		hashbytes[len(hashbytes)-1] = byte(i)
+		block.Hash = primitives.Data32FromBytes(hashbytes)
+		err := sh.InsertBlock(block)
 		if err != nil {
 			panic(err)
 		}
