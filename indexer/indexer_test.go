@@ -153,7 +153,7 @@ db:
 indexer:
   sourceFolder: "test"
   subFolderBatchSize: 10000
-  keepFiles: false
+  keepFiles: true
   retryCountOnFailure: 3
   toBlock: 9820211
   fromBlock: 9820210
@@ -174,7 +174,7 @@ db:
 indexer:
   sourceFolder: "test"
   subFolderBatchSize: 10000
-  keepFiles: false
+  keepFiles: true
   retryCountOnFailure: 3
   toBlock: 9820211
   fromBlock: 9820210
