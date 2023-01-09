@@ -300,15 +300,15 @@ func TestEthEndpointsStatic(t *testing.T) {
 		// {"test sync eth_sendRawTransaction low gas price", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasPrice}, false, "gas price too low"},
 		{"test sync eth_sendRawTransaction low gas limit", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasLimit}, false, "intrinsic gas too low"},
 		{"test sync eth_sendRawTransaction incorrect nonce", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidNonce}, false, "ERR_INCORRECT_NONCE"},
-		{"test eth_call contract data", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &contractAddr, Data: contractData}, &LatestBlockNumber}, false, "0x00000000000000000000000000000005"},
+		{"test eth_call contract data", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &contractAddr, Data: contractData}, &LatestBlockNumber}, false, "0x0000000000000000000000000000000000000000000000000000000000000005"},
 		{"test eth_call transfer to EOA", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferVal}, &LatestBlockNumber}, false, "0x"},
 		// Needs changes on engine side to be able to run this test properly. Normally, "execution error: Out Of Gas" should be retrieved. Hovewer, since max gas is staticilly applied the result seems to be success
 		{"test eth_call out of gas", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferVal, Gas: &transferValOOF}, &LatestBlockNumber}, false, "0x"},
-		{"test eth_call out of fund", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferValOOF}, &LatestBlockNumber}, false, "execution errors: Out Of Fund"},
-		{"test eth_call stack overflow", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{To: &contractAddrStackOverFlow, Data: contractDataStackOverFlow}, &LatestBlockNumber}, false, "wasm execution failed with error: FunctionCallError(HostError(GuestPanic { panic_msg: \"ERR_STACK_OVERFLOW\" }))"},
+		{"test eth_call out of fund", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferValOOF}, &LatestBlockNumber}, false, "Ok(OutOfFund)"},
+		{"test eth_call stack overflow", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{To: &contractAddrStackOverFlow, Data: contractDataStackOverFlow}, &LatestBlockNumber}, false, "wasm execution failed with error: HostError(GuestPanic { panic_msg: \"ERR_STACK_OVERFLOW\" })"},
 		// Testnet returns "0x" for Revert status, following the same approach
-		{"test eth_call call too deep", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{To: &contractAddrCallTooDeep, Data: contractDataCallTooDeep}, &LatestBlockNumber}, false, "0x"},
-		{"test eth_call out of offset", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &contractAddrOutOfOffset, Data: contractDataOutOfOffset}, &LatestBlockNumber}, false, "execution errors: Out Of Offset"},
+		{"test eth_call call too deep", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{To: &contractAddrCallTooDeep, Data: contractDataCallTooDeep}, &LatestBlockNumber}, false, "execution reverted without data"},
+		{"test eth_call out of offset", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &contractAddrOutOfOffset, Data: contractDataOutOfOffset}, &LatestBlockNumber}, false, "Ok(OutOfOffset)"},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
