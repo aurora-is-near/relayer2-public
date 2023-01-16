@@ -9,12 +9,19 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/aurora-is-near/near-api-go"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+)
+
+var (
+	beforeGenesisError   = "DB Not Found Error"
+	beforeAuroraError    = "does not exist while viewing"
+	tooManyrequestsError = "429"
 )
 
 type EngineEth struct {
@@ -81,6 +88,10 @@ func (e *EngineEth) GetCode(ctx context.Context, address common.Address, number 
 func (e *EngineEth) getCode(_ context.Context, address common.Address, number *common.BN64) (*string, error) {
 	resp, err := e.signer.ViewFunction(utils.AccountId, "get_code", address.Bytes(), common.BN64ToInt64(number))
 	if err != nil {
+		// Return "0x" for the blocks before Aurora account or before Genesis
+		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
+			return utils.Constants.Response0x(), nil
+		}
 		return nil, &errs.GenericError{Err: err}
 	}
 	return getStringResultFromEngineResponse(resp)
@@ -100,6 +111,10 @@ func (e *EngineEth) GetBalance(ctx context.Context, address common.Address, numb
 func (e *EngineEth) getBalance(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
 	resp, err := e.signer.ViewFunction(utils.AccountId, "get_balance", address.Bytes(), common.BN64ToInt64(number))
 	if err != nil {
+		// Return "0x0" for the blocks before Aurora account or before Genesis
+		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
+			return utils.Constants.ZeroUint256(), nil
+		}
 		return nil, &errs.GenericError{Err: err}
 	}
 	return getUint256ResultFromEngineResponse(resp)
@@ -119,6 +134,12 @@ func (e *EngineEth) GetTransactionCount(ctx context.Context, address common.Addr
 func (e *EngineEth) getTransactionCount(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
 	resp, err := e.signer.ViewFunction(utils.AccountId, "get_nonce", address.Bytes(), common.BN64ToInt64(number))
 	if err != nil {
+		// Return "0x0" for the blocks before Aurora account or before Genesis
+		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
+			return utils.Constants.ZeroUint256(), nil
+		} else if strings.Contains(err.Error(), tooManyrequestsError) {
+			return nil, errors.New("engine error 429, too many requests received")
+		}
 		return nil, &errs.GenericError{Err: err}
 	}
 	return getUint256ResultFromEngineResponse(resp)
@@ -129,13 +150,13 @@ func (e *EngineEth) getTransactionCount(_ context.Context, address common.Addres
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) GetStorageAt(ctx context.Context, address common.Address, storageSlot common.Uint256, number *common.BN64) (*common.Uint256, error) {
-	return endpoint.Process(ctx, "eth_getStorageAt", e.Endpoint, func(ctx context.Context) (*common.Uint256, error) {
+func (e *EngineEth) GetStorageAt(ctx context.Context, address common.Address, storageSlot common.Uint256, number *common.BN64) (*string, error) {
+	return endpoint.Process(ctx, "eth_getStorageAt", e.Endpoint, func(ctx context.Context) (*string, error) {
 		return e.getStorageAt(ctx, address, storageSlot, number)
 	}, address, number)
 }
 
-func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, storageSlot common.Uint256, number *common.BN64) (*common.Uint256, error) {
+func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, storageSlot common.Uint256, number *common.BN64) (*string, error) {
 	argsBuf, err := formatGetStorageAtArgsForEngine(address, storageSlot)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
@@ -143,9 +164,13 @@ func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, stor
 
 	resp, err := e.signer.ViewFunction(utils.AccountId, "get_storage_at", argsBuf, common.BN64ToInt64(number))
 	if err != nil {
+		// Return "0x" for the blocks before Aurora account or before Genesis
+		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
+			return utils.Constants.ZeroStrUint256(), nil
+		}
 		return nil, &errs.GenericError{Err: err}
 	}
-	return getUint256ResultFromEngineResponse(resp)
+	return getStringResultFromEngineResponse(resp)
 }
 
 // Call executes a new message call immediately without creating a transaction on the blockchain
@@ -266,7 +291,12 @@ func getStringResultFromEngineResponse(respArg interface{}) (*string, error) {
 func getCallResultFromEngineResponse(respArg interface{}) (*string, error) {
 	status, err := engine.NewTransactionStatus(respArg)
 	if err != nil {
-		return nil, &errs.GenericError{Err: err}
+		_, ok := err.(*errs.TxsStatusError)
+		if ok {
+			return nil, err
+		} else {
+			return nil, &errs.GenericError{Err: err}
+		}
 	}
 	return status.ToResponse()
 }
