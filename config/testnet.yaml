@@ -7,7 +7,7 @@ db:
   badger:
     core:
       gcIntervalSeconds: 10
-      scanRangeThreshold: 3000
+      scanRangeThreshold: 2000
       maxScanIterators: 10000
       filterTtlMinutes: 15
       options:
@@ -34,11 +34,12 @@ endpoint:
     protocolVersion: 0x41
     hashrate: 0
     gasEstimate: 0x6691b7
-    gasPrice: 0x42c1d80
+    gasPrice: 0x0
   proxyEndpoints:
     url: "https://testnet.aurora.dev:443"
     endpoints:
-      - eth_gasEstimate
+      - eth_estimateGas
+      - debug_traceTransaction
   disabledEndpoints:
     -
 rpcNode:
@@ -69,7 +70,7 @@ indexer:
   retryCountOnFailure: 10
   waitForBlocksMs: 500
 backupIndexer:
-  indexFromBackup: true
+  indexFromBackup: false
   backupDir: backup/v2_mainnet_aurora_blocks
   backupNamePrefix: v2_mainnet_aurora_blocks_
   from: 0

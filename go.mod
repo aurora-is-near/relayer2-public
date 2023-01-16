@@ -23,10 +23,8 @@ require (
 	github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1 // indirect
 	github.com/aurora-is-near/stream-backup v0.0.0-20221212013533-1e06e263c3f7 // indirect
 	github.com/btcsuite/btcutil v1.0.2 // indirect
-	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
-	github.com/jackc/pgtype v1.13.0 // indirect
 	github.com/jackc/pgx/v5 v5.2.0 // indirect
 	github.com/jackc/puddle/v2 v2.1.2 // indirect
 	github.com/near/borsh-go v0.3.1 // indirect
@@ -35,6 +33,7 @@ require (
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
+	golang.org/x/exp v0.0.0-20221227203929-1b447090c38c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
 
@@ -100,7 +99,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a // indirect
 	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0 // indirect
-	golang.org/x/sys v0.0.0-20221010170243-090e33056c14 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
