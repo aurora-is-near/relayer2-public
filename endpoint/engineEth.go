@@ -9,13 +9,13 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/aurora-is-near/near-api-go"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
 )
 
 var (
@@ -333,9 +333,14 @@ func getTxsResultFromEngineResponse(respArg interface{}, txsHash string) (*strin
 
 // validateRawTransaction validates the raw transaction by checking GasPrice and Gas Limit
 func validateRawTransaction(rawRxsBytes []byte, cfg endpoint.EngineConfig) error {
-	txsObj, err := parseRawTransaction(rawRxsBytes)
+	txsObj, err := parseTransactionFromBinary(rawRxsBytes)
 	if err != nil {
-		return errors.New("transaction parameter is not correct")
+		return err
+	}
+
+	// check if provided sender address is valid
+	if _, err := extractTransactionSender(txsObj); err != nil {
+		return fmt.Errorf("can't extract transaction sender: %v", err)
 	}
 	// check if provided gas price is bigger than min gas price limit
 	if txsObj.GasPrice().Cmp(cfg.MinGasPrice) < 0 {
@@ -348,12 +353,22 @@ func validateRawTransaction(rawRxsBytes []byte, cfg endpoint.EngineConfig) error
 	return nil
 }
 
-// parseRawTransaction decodes the sendRawTransaction data to a go-ethereum transaction structure
-func parseRawTransaction(rawTxsBytes []byte) (*gethtypes.Transaction, error) {
-	var txs gethtypes.Transaction
-	err := rlp.DecodeBytes(rawTxsBytes, &txs)
+// parseTransactionFromBinary decodes the sendRawTransaction data to a go-ethereum transaction structure
+func parseTransactionFromBinary(txBinary []byte) (*gethtypes.Transaction, error) {
+	var tx gethtypes.Transaction
+	if err := tx.UnmarshalBinary(txBinary); err != nil {
+		return nil, fmt.Errorf("can't parse transaction: %v", err)
+	}
+
+	return &tx, nil
+}
+
+// extractTransactionSender decodes the sendRawTransaction sender data and returns if the operation failse
+func extractTransactionSender(tx *gethtypes.Transaction) (*common.Address, error) {
+	addr, err := gethtypes.Sender(gethtypes.LatestSignerForChainID(tx.ChainId()), tx)
 	if err != nil {
 		return nil, err
 	}
-	return &txs, nil
+	sender := common.Address{Address: addr}
+	return &sender, nil
 }

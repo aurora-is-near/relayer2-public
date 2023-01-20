@@ -23,7 +23,7 @@ endpoint:
     nearNodeURL: https://archival-rpc.mainnet.near.org
     signer:
     signerKey:
-    asyncSendRawTxs: false
+    asyncSendRawTxs: true
     minGasPrice: 0
     minGasLimit: 21000
     gasForNearTxsCall: 300000000000000
