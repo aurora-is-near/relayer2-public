@@ -1,12 +1,12 @@
 package endpoint
 
 import (
-	events "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum/events"
-	"aurora-relayer-go-common/types/request"
-	"aurora-relayer-go-common/types/response"
 	"context"
 	"encoding/json"
 	"net"
+	events "relayer2-base/rpcnode/github-ethereum-go-ethereum/events"
+	"relayer2-base/types/request"
+	"relayer2-base/types/response"
 	"testing"
 	"time"
 

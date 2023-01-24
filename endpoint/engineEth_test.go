@@ -1,20 +1,20 @@
 package endpoint
 
 import (
-	"aurora-relayer-go-common/types/common"
-	"aurora-relayer-go-common/types/engine"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"os"
 	"reflect"
+	"relayer2-base/types/common"
+	"relayer2-base/types/engine"
 	"strings"
 	"testing"
 	"time"
 
-	"aurora-relayer-go-common/db"
-	"aurora-relayer-go-common/db/badger"
-	commonEndpoint "aurora-relayer-go-common/endpoint"
+	"relayer2-base/db"
+	"relayer2-base/db/badger"
+	commonEndpoint "relayer2-base/endpoint"
 
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/spf13/viper"

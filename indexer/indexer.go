@@ -1,13 +1,6 @@
 package indexer
 
 import (
-	"aurora-relayer-go-common/broker"
-	"aurora-relayer-go-common/db"
-	"aurora-relayer-go-common/log"
-	"aurora-relayer-go-common/types"
-	"aurora-relayer-go-common/types/common"
-	"aurora-relayer-go-common/types/indexer"
-	"aurora-relayer-go-common/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +8,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"relayer2-base/broker"
+	"relayer2-base/db"
+	"relayer2-base/log"
+	"relayer2-base/types"
+	"relayer2-base/types/common"
+	"relayer2-base/types/indexer"
+	"relayer2-base/utils"
 	"sync"
 	"time"
 )
