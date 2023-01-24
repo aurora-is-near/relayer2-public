@@ -1,21 +1,20 @@
 package endpoint
 
 import (
-	"aurora-relayer-go-common/endpoint"
-	"aurora-relayer-go-common/types/common"
-	"aurora-relayer-go-common/types/engine"
-	errs "aurora-relayer-go-common/types/errors"
-	"aurora-relayer-go-common/utils"
 	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"strings"
-	"time"
-
 	"github.com/aurora-is-near/near-api-go"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"relayer2-base/endpoint"
+	"relayer2-base/types/common"
+	"relayer2-base/types/engine"
+	errs "relayer2-base/types/errors"
+	"relayer2-base/utils"
+	"strings"
+	"time"
 )
 
 var (

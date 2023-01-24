@@ -1,8 +1,8 @@
 package indexer
 
 import (
-	"aurora-relayer-go-common/cmd"
-	"aurora-relayer-go-common/log"
+	"relayer2-base/cmd"
+	"relayer2-base/log"
 
 	"github.com/spf13/viper"
 )

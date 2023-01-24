@@ -1,12 +1,12 @@
 package endpoint
 
 import (
-	"aurora-relayer-go-common/broker"
-	"aurora-relayer-go-common/endpoint"
-	eventbroker "aurora-relayer-go-common/rpcnode/github-ethereum-go-ethereum/events"
-	"aurora-relayer-go-common/types/event"
-	"aurora-relayer-go-common/types/request"
 	"context"
+	"relayer2-base/broker"
+	"relayer2-base/endpoint"
+	eventbroker "relayer2-base/rpcnode/github-ethereum-go-ethereum/events"
+	"relayer2-base/types/event"
+	"relayer2-base/types/request"
 
 	"github.com/ethereum/go-ethereum/rpc"
 )

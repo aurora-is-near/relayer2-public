@@ -1,22 +1,23 @@
-module aurora-relayer-go
+module relayer2-public
 
 go 1.18
 
-replace aurora-relayer-go-common => ../aurora-relayer-go-common
+replace relayer2-base => ../relayer2-base
 
-//replace aurora-relayer-go-common => github.com/aurora-is-near/aurora-relayer-go-common v0.0.0-20221122071546-d3466d36df77
+//replace relayer2-base => github.com/aurora-is-near/relayer2-base v0.0.0-20230124094357-879347befc64
 
 // The following package had a conflicting dependency.
 // Fixed by pointing the dependency to the latest version tag.
 replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.2
 
 require (
-	aurora-relayer-go-common v0.0.0
+	github.com/aurora-is-near/near-api-go v0.0.13-0.20221011140300-30882c6356c4
 	github.com/ethereum/go-ethereum v1.10.25
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/viper v1.13.0
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/net v0.0.0-20221012135044-0b7e1fb9d458
+	relayer2-base v0.0.0
 )
 
 require (
@@ -39,7 +40,6 @@ require (
 
 require (
 	capnproto.org/go/capnp/v3 v3.0.0-alpha.7 // indirect
-	github.com/aurora-is-near/near-api-go v0.0.13-0.20221011140300-30882c6356c4
 	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
