@@ -35,19 +35,30 @@ Relayer requires a set of configuration files to start (see [Configuration] for 
 provided under `config` directory after build process. If config file path is not specified, Relayer starts with `config/testnet.yaml` 
 by default.
 
-### Mainnet
+### Configuring a signing key
+
+To be able to call `eth_sendRawTransaction`, you must have a NEAR account and
+signing key on the network you are relaying to, and said NEAR account must have
+a sufficient Ⓝ balance to be able to send transactions.
+
+To configure the signing account and private key:
+
+#### Mainnet
 ```bash
 export AURORA_RELAYER_ENDPOINT_ENGINE_SIGNER=<signer> # or set in config/mainnet.yaml
 export AURORA_RELAYER_ENDPOINT_ENGINE_SIGNERKEY=<path to Near Credentials file> # or set in config/mainnet.yaml
 ./relayer start --config config/mainnet.yaml
 ```
 
-### Testnet
+#### Testnet
 ```bash
 export AURORA_RELAYER_ENDPOINT_ENGINE_SIGNER=<signer> # or set in config/testnet.yaml
 export AURORA_RELAYER_ENDPOINT_ENGINE_SIGNERKEY=<path to Near Credentials file> # or set in config/testnet.yaml
 ./relayer start # default config file is config/testnet.yaml
 ```
+
+If you're using the [NEAR CLI], you will find your signing keys stored as JSON
+key files under your `$HOME/.near-credentials/` directory.
 
 ### Commands available
 | command | description                        |
@@ -66,20 +77,21 @@ for detailed explanation and flags of each command see help
 
 | Config Name                                   | Environment Variable Name <br/>(prefix AURORA_RELAYER_) | Default                                      | Runtime Change | Description                                                                                                                                         |
 |-----------------------------------------------|---------------------------------------------------------|----------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| logger.level                                  | LOGGER_LEVEL                                            | `info`                                       | ✅              | root logger level                                                                                                                                   |
+| logger.level                                  | LOGGER_LEVEL                                            | `info`                                       | ✅              | 7 levels from highest to lowest (panic, fatal, error, warn, info, debug, trace)                                                                     |
 | logger.filePath                               | LOGGER_FILEPATH                                         | `/tmp/relayer/log/relayer.log`               | ❌              | path to log file(s)                                                                                                                                 |
-| logger.logToConsole                           | LOGGER_LOGTOCONSOLE                                     | `true`                                       | ❌              | logs are sent to stdout                                                                                                                             |
+| logger.logToConsole                           | LOGGER_LOGTOCONSOLE                                     | `false`                                      | ❌              | logs are sent to stdout                                                                                                                             |
 | logger.logToFile                              | LOGGER_LOGTOFILE                                        | `true`                                       | ❌              | logs are sent to log file, see logger.filePath                                                                                                      |
 | db.badger.core.gcIntervalSeconds              | BADGER_CORE_GCINTERVALSECONDS                           | `10`                                         | ❌              | BadgerDB garbage collector trigger period                                                                                                           |
-| db.badger.core.scanRangeThreshold             | BADGER_CORE_SCANRANGETHRESHOLD                          | `3000`                                       | ❌              | log scan range                                                                                                                                      |
-| db.badger.core.maxScanIterators               | BADGER_CORE_MAXSCANITERATORS                            | `10000`                                      | ❌              | max log scan iterators                                                                                                                              |
+| db.badger.core.scanRangeThreshold             | BADGER_CORE_SCANRANGETHRESHOLD                          | `2000`                                       | ❌              | max allowed block range for log requests                                                                                                            |
+| db.badger.core.maxScanIterators               | BADGER_CORE_MAXSCANITERATORS                            | `10000`                                      | ❌              | max logs returned if the scanRangeThreshold exceeded                                                                                                |
 | db.badger.core.filterTtlMinutes               | BADGER_CORE_FILTERTTLMINUTES                            | `15`                                         | ❌              | retention time for stored filters (not used)                                                                                                        |
-| db.badger.core.options                        |                                                         |                                              |                | see [BadgerDB] for more options                                                                                                                     |
+| db.badger.core.options                        |                                                         |                                              |                 | see [BadgerDB] for more options                                                                                                                     |
 | db.badger.core.options.Dir                    | BADGER_CORE_OPTIONS_DIR                                 | `/tmp/relayer/data`                          | ❌              | see [BadgerDB] for details                                                                                                                          |
 | db.badger.core.options.ValueDir               | BADGER_CORE_OPTIONS_VALUEDIR                            | `/tmp/relayer/data`                          | ❌              | see [BadgerDB] for details                                                                                                                          |
 | db.badger.core.options.InMemory               | BADGER_CORE_OPTIONS_INMEMORY                            | `false`                                      | ❌              | see [BadgerDB] for details                                                                                                                          |
 | db.badger.core.options.DetectConflicts        | BADGER_CORE_OPTIONS_DETECTCONFLICTS                     | `false`                                      | ❌              | see [BadgerDB] for details                                                                                                                          |
 | endpoint.filterFilePath                       | ENDPOINT_FILTERFILEPATH                                 | `config/filter.yaml`                         | ❌              | path to filter configuration file that specifies whitelist/blacklist based on IP, EOA, CA                                                           |
+| endpoint.chainId                              | ENDPOINT_CHAINID                                        | user should specify :heavy_exclamation_mark: | ❌              | e.g.: mainnet:1313161554, testnet:1313161555                                                                                                        |
 | endpoint.engine.nearNetworkID                 | ENDPOINT_ENGINE_NEARNETWORKID                           | user should specify :heavy_exclamation_mark: | ❌              | e.g.: mainnet, testnet                                                                                                                              |
 | endpoint.engine.nearNodeURL                   | ENDPOINT_ENGINE_NEARNODEURL                             | user should specify :heavy_exclamation_mark: | ❌              | URL of a Near Node to communicate                                                                                                                   |
 | endpoint.engine.signer                        | ENDPOINT_ENGINE_SIGNER                                  | user should specify :heavy_exclamation_mark: | ❌              | to be able to communicate with Near Node, user must have a Near account                                                                             |
@@ -87,7 +99,7 @@ for detailed explanation and flags of each command see help
 | endpoint.engine.asyncSendRawTxs               | ENDPOINT_ENGINE_ASYNCSENDRAWTXS                         | `true`                                       | ❌              | if true, transaction calls to Near Node are made in async. fashion                                                                                  |
 | endpoint.engine.minGasPrice                   | ENDPOINT_ENGINE_MINGASPRICE                             | `0`                                          | ❌              |                                                                                                                                                     |
 | endpoint.engine.minGasLimit                   | ENDPOINT_ENGINE_MINGASLIMIT                             | `21000`                                      | ❌              |                                                                                                                                                     |
-| endpoint.engine.gasForNearTxsCall             | ENDPOINT_ENGINE_GASFORREARTXSCALL                       | `300000000000000`                            | ❌              |                                                                                                                                                     |
+| endpoint.engine.gasForNearTxsCall             | ENDPOINT_ENGINE_GASFORNEARTXSCALL                       | `300000000000000`                            | ❌              |                                                                                                                                                     |
 | endpoint.engine.depositForNearTxsCall         | ENDPOINT_ENGINE_DEPOSITEFORNEARTXSCALL                  | `0`                                          | ❌              |                                                                                                                                                     |
 | endpoint.engine.retryWaitTimeMsForNearTxsCall | ENDPOINT_ENGINE_RETRYWAITTIMEMSFORNEXTTXSCALL           | `3000`                                       | ❌              |                                                                                                                                                     |
 | endpoint.engine.retryNumberForNearTxsCall     | ENDPOINT_ENGINE_RETRYNUMBERFORNEXTNEARTXSCALL           | `3`                                          | ❌              |                                                                                                                                                     |
@@ -96,23 +108,35 @@ for detailed explanation and flags of each command see help
 | endpoint.eth.gasEstimate                      | ENDPOINT_ETH_GASESTIMATE                                | `0x6691b7`                                   | ❌              |                                                                                                                                                     |
 | endpoint.eth.gasPrice                         | ENDPOINT_ETH_GASPRICE                                   | `0x42c1d80`                                  | ❌              |                                                                                                                                                     |
 | endpoint.eth.proxyEndpoints.url               | ENDPOINT_ETH_PROXYENDPOINTS_URL                         | `https://testnet.aurora.dev:443`             | ❌              |                                                                                                                                                     |
-| endpoint.eth.proxyEndpoints.endpoints         | ENDPOINT_ETH_PROXYENDPOINTS_ENDPOINTS                   | empty list                                   | ✅              |                                                                                                                                                     |
-| endpoint.eth.proxyEndpoints.disabledEndpoints | ENDPOINT_ETH_DISABLEDENDPOINTS                          | empty list                                   | ✅              |                                                                                                                                                     |
-| rpcNode.geth.HTTPHost                         | RPCNODE_GETH_HTTPHOST                                   | "localhost"                                  | ❌              |                                                                                                                                                     |
-| rpcNode.geth.HTTPPort                         | RPCNODE_GETH_HTTPPORT                                   | "8545"                                       | ❌              |                                                                                                                                                     |
+| endpoint.eth.proxyEndpoints.endpoints         | ENDPOINT_ETH_PROXYENDPOINTS_ENDPOINTS                   | empty list                                   | ✅              | e.g.: eth_estimateGas, debug_traceTransaction                                                                                                       |
+| endpoint.eth.proxyEndpoints.disabledEndpoints | ENDPOINT_ETH_DISABLEDENDPOINTS                          | empty list                                   | ✅              | e.g.: debug_traceTransaction                                                                                                                        |
+| rpcNode.geth.HTTPHost                         | RPCNODE_GETH_HTTPHOST                                   | `localhost`                                  | ❌              |                                                                                                                                                     |
+| rpcNode.geth.HTTPPort                         | RPCNODE_GETH_HTTPPORT                                   | `8545`                                       | ❌              |                                                                                                                                                     |
 | rpcNode.geth.HTTPVirtualHosts                 | RPCNODE_GETH_HTTPVIRTUALHOSTS                           | `["localhost"]`                              | ❌              |                                                                                                                                                     |
 | rpcNode.geth.HTTPModules                      | RPCNODE_GETH_HTTPMODULES                                | `["net", "web3", "eth", "parity"]`           | ❌              |                                                                                                                                                     |
-| rpcNode.geth.WSHost                           | RPCNODE_GETH_WSHOST                                     | "localhost"                                  | ❌              |                                                                                                                                                     |
-| rpcNode.geth.WSPort                           | RPCNODE_GETH_WSPORT                                     | "8545"                                       | ❌              |                                                                                                                                                     |
+| rpcNode.geth.WSHost                           | RPCNODE_GETH_WSHOST                                     | `localhost`                                  | ❌              |                                                                                                                                                     |
+| rpcNode.geth.WSPort                           | RPCNODE_GETH_WSPORT                                     | `8545`                                       | ❌              |                                                                                                                                                     |
 | rpcNode.geth.WSModules                        | RPCNODE_GETH_WSMODULES                                  | `["net", "web3", "eth", "parity"]`           | ❌              |                                                                                                                                                     |
 | indexer.sourceFolder                          | INDEXER_SOURCE_FOLDER                                   | `/tmp/relayer/json/`                         | ❌              |                                                                                                                                                     |
 | indexer.subFolderBatchSize                    | INDEXER_SUBFOLDERBATCHSIZE                              | `10000`                                      | ❌              |                                                                                                                                                     |
-| indexer.keepFiles                             | INDEXER_KEEPFILES                                       | `false`                                      | ❌              |                                                                                                                                                     |
+| indexer.keepFiles                             | INDEXER_KEEPFILES                                       | `true`                                       | ❌              | deletes the json files after indexing if set to false                                                                                               |
 | indexer.genesisBlock                          | INDEXER_GENESISBLOCK                                    | `9820210`                                    | ❌              |                                                                                                                                                     |
 | indexer.fromBlock                             | INDEXER_FROMBLOCK                                       | `9820210`                                    | ❌              |                                                                                                                                                     |
 | indexer.toBlock                               | INDEXER_TOBLOCK                                         | `0`                                          | ❌              |                                                                                                                                                     |
 | indexer.retryCountOnFailure                   | INDEXER_RETRYCOUNTONFAILURE                             | `10`                                         | ❌              |                                                                                                                                                     |
-| indexer.waitForBlocksMs                       | INDEXER_WAITFORBLOCKMS                                  | `500`                                        | ❌              |                                                                                                                                                     |
+| indexer.waitForBlockMs                        | INDEXER_WAITFORBLOCKMS                                  | `500`                                        | ❌              |                                                                                                                                                     |
+| indexer.forceReindex                          | INDEXER_FORCEREINDEX                                    | `false`                                      | ❌              | re-index any block range defined by `fromBlock` to `toBlock`. Upon completion of re-indexing, indexer will continue indexing new blocks             |
+| backupIndexer.indexFromBackup                 | BACKUPINDEXER_INDEXFROMBACKUP                           | `false`                                      | ❌              | enables indexing from backup files for faster indexing if set to true                                                                               |
+| backupIndexer.backupDir                       | BACKUPINDEXER_BACKUPDIR                                 |                                              | ❌              | path to the backup files                                                                                                                            |
+| backupIndexer.backupNamePrefix                | BACKUPINDEXER_BACKUPNAMEPREFIX                          |                                              | ❌              |                                                                                                                                                     |
+| backupIndexer.from                            | BACKUPINDEXER_FROM                                      |                                              | ❌              | sets the start block of the backup indexer, starts from begining of the backup if left empty or set to zero                                         |
+| backupIndexer.to                              | BACKUPINDEXER_TO                                        |                                              | ❌              | sets the end block of the backup indexer, stops at the end of bakcups if left empty or set to zero                                                  |
+| prehistoryIndexer.indexFromPrehistory         | PREHISTORYINDEXER_INDEXFROMPREHISTORY                   | `false`                                      | ❌              | enables indexing blocks from 0 to the cretion of the Aurora Contract if set to true                                                                 |
+| prehistoryIndexer.prehistoryHeight            | PREHISTORYINDEXER_PREHISTORYHEIGHT                      |                                              | ❌              | start of the Aurora Contract                                                                                                                        |
+| prehistoryIndexer.from                        | PREHISTORYINDEXER_FROM                                  | `0`                                          | ❌              | sets the start block of the prehistory indexer                                                                                                      |
+| prehistoryIndexer.to                          | PREHISTORYINDEXER_TO                                    |                                              | ❌              | sets the end block of the prehistory indexer                                                                                                        |
+| prehistoryIndexer.batchSize                   | PREHISTORYINDEXER_BATCHSIZE                             | `10000`                                      | ❌              | controls the read batch size for optimum operation                                                                                                  |
+| prehistoryIndexer.archiveURL                  | PREHISTORYINDEXER_ARCHIVEURL                            |                                              | ❌              | the Near archive postgres DB info to retrieve the prehistory data, e.g.: postgres://public_readonly:nearprotocol@104.199.89.51/mainnet_explorer     |
 
 
 
@@ -128,7 +152,7 @@ for detailed explanation and flags of each command see help
 | [`net_version`]                             | ✅      |                                                                                            |
 | [`eth_accounts`]                            | ✅      |                                                                                            |
 | [`eth_blockNumber`]                         | ✅      |                                                                                            |
-| [`eth_call`]                                | ❌      | Handled by standalone                                                                      |
+| [`eth_call`]                                | ✅      |                                                                                            |
 | [`eth_chainId`]                             | ✅      |                                                                                            |
 | [`eth_coinbase`]                            | ✅      |                                                                                            |
 | eth_compileLLL                              | ❌      | Unsupported                                                                                |
@@ -136,22 +160,22 @@ for detailed explanation and flags of each command see help
 | eth_compileSolidity                         | ❌      | Unsupported                                                                                |
 | [`eth_estimateGas`]                         | ✅      |                                                                                            |
 | [`eth_gasPrice`]                            | ✅      |                                                                                            |
-| [`eth_getBalance`]                          | ❌      | Handled by standalone                                                                      |
+| [`eth_getBalance`]                          | ✅      |                                                                                            |
 | [`eth_getBlockByHash`]                      | ✅      |                                                                                            |
 | [`eth_getBlockByNumber`]                    | ✅      |                                                                                            |
 | [`eth_getBlockTransactionCountByHash`]      | ✅      |                                                                                            |
 | [`eth_getBlockTransactionCountByNumber`]    | ✅      |                                                                                            |
-| [`eth_getCode`]                             | ❌      | Handled by standalone                                                                      |
+| [`eth_getCode`]                             | ✅      |                                                                                            |
 | eth_getCompilers                            | ✅      |                                                                                            |
 | [`eth_getFilterChanges`]                    | ✅      |                                                                                            |
 | [`eth_getFilterLogs`]                       | ✅      |                                                                                            |
 | [`eth_getLogs`]                             | ✅      |                                                                                            |
 | [`eth_getProof`]                            | ❌      | EIP-1186                                                                                   |
-| [`eth_getStorageAt`]                        | ❌      | Handled by standalone                                                                      |
+| [`eth_getStorageAt`]                        | ✅      |                                                                                            |
 | [`eth_getTransactionByBlockHashAndIndex`]   | ✅      |                                                                                            |
 | [`eth_getTransactionByBlockNumberAndIndex`] | ✅      |                                                                                            |
 | [`eth_getTransactionByHash`]                | ✅      |                                                                                            |
-| [`eth_getTransactionCount`]                 | ❌      | Handled by standalone                                                                      |
+| [`eth_getTransactionCount`]                 | ✅      |                                                                                            |
 | [`eth_getTransactionReceipt`]               | ✅      |                                                                                            |
 | [`eth_getUncleByBlockHashAndIndex`]         | ✅      |                                                                                            |
 | [`eth_getUncleByBlockNumberAndIndex`]       | ✅      |                                                                                            |
@@ -165,7 +189,7 @@ for detailed explanation and flags of each command see help
 | [`eth_newPendingTransactionFilter`]         | ✅      |                                                                                            |
 | [`eth_pendingTransactions`]                 | ✅      | [Undocumented](https://github.com/ethereum/go-ethereum/issues/1648#issuecomment-130591933) |
 | [`eth_protocolVersion`]                     | ✅      |                                                                                            |
-| [`eth_sendRawTransaction`]                  | ❌      | Handled by the scorer                                                                      |
+| [`eth_sendRawTransaction`]                  | ✅      |                                                                                            |
 | [`eth_sendTransaction`]                     | ❌      | Unsupported                                                                                |
 | [`eth_sign`]                                | ❌      | Unsupported                                                                                |
 | [`eth_signTransaction`]                     | ❌      | Unsupported                                                                                |
@@ -188,9 +212,9 @@ for detailed explanation and flags of each command see help
 | shh_post                                    | ❌      | Discontinued                                                                               |
 | shh_uninstallFilter                         | ❌      | Discontinued                                                                               |
 | shh_version                                 | ❌      | Discontinued                                                                               |
-| [`txpool_content`]                          | ✅      | Geth extension                                                                             |
-| [`txpool_inspect`]                          | ✅      | Geth extension                                                                             |
-| [`txpool_status`]                           | ✅      | Geth extension                                                                             |
+| [`txpool_content`]                          | ❌      | Unsupported                                                                                |
+| [`txpool_inspect`]                          | ❌      | Unsupported                                                                                |
+| [`txpool_status`]                           | ❌      | Unsupported                                                                                |
 | [`parity_pendingTransactions`]              | ✅      | Parity extension                                                                           |
 
 **Legend**: ❌ = not supported. 🚧 = work in progress. ✅ = supported.
@@ -218,7 +242,8 @@ for detailed explanation and flags of each command see help
 [Aurora Relayer v2 Base]: https://github.com/aurora-is-near/relayer2-base
 [BadgerDB]: https://github.com/dgraph-io/badger#badger-documentation
 
-[Configuration]: https://github.com/aurora-is-near/relayer2-public#configuration
+[Configuration]: https://github.com/aurora-is-near/relayer2-public#how-to-configure
+[NEAR CLI]: https://docs.near.org/docs/tools/near-cli
 
 [`web3_clientVersion`]: https://docs.infura.io/infura/networks/ethereum/json-rpc-methods/web3_clientversion
 [`web3_sha3`]: https://openethereum.github.io/JSONRPC-web3-module#web3_sha3

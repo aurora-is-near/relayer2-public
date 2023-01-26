@@ -68,7 +68,7 @@ indexer:
   fromBlock: 9820210
   toBlock: 0                  # 0 = indefinite
   retryCountOnFailure: 10
-  waitForBlocksMs: 500
+  waitForBlockMs: 500
 backupIndexer:
   indexFromBackup: false
   backupDir: backup/v2_mainnet_aurora_blocks
