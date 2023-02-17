@@ -1,8 +1,8 @@
 package indexer
 
 import (
-	"relayer2-base/cmd"
-	"relayer2-base/log"
+	"github.com/aurora-is-near/relayer2-base/cmd"
+	"github.com/aurora-is-near/relayer2-base/log"
 
 	"github.com/spf13/viper"
 )

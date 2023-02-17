@@ -1,12 +1,12 @@
 package middleware
 
 import (
+	"github.com/aurora-is-near/relayer2-base/log"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 	"io/fs"
 	"net"
 	"net/http"
-	"relayer2-base/log"
 	"strings"
 )
 
