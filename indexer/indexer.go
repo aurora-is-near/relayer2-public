@@ -4,6 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+
 	"github.com/aurora-is-near/relayer2-base/broker"
 	"github.com/aurora-is-near/relayer2-base/db"
 	"github.com/aurora-is-near/relayer2-base/log"
@@ -12,11 +18,6 @@ import (
 	"github.com/aurora-is-near/relayer2-base/types/indexer"
 	"github.com/aurora-is-near/relayer2-base/utils"
 	"golang.org/x/net/context"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"sync"
-	"time"
 )
 
 type processIndexerState func(*Indexer) processIndexerState
@@ -292,7 +293,8 @@ func publish(i *Indexer) processIndexerState {
 		} else {
 			i.b.PublishNewHeads(block)
 		}
-		logs, err := i.dbh.GetLogs(ctx, types.Filter{FromBlock: bn.Uint64(), ToBlock: bn.Uint64()}.ToLogFilter())
+		nfilter := &(types.Filter{FromBlock: bn.Uint64(), ToBlock: bn.Uint64()})
+		logs, err := i.dbh.GetLogs(ctx, nfilter.ToLogFilter())
 		if err != nil {
 			i.l.Error().Err(err) // just log, this is a best-effort operation
 		} else {

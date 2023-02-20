@@ -6,13 +6,15 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"relayer2-base/db"
-	"relayer2-base/db/badger"
-	"relayer2-base/types/indexer"
-	"relayer2-base/types/primitives"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/aurora-is-near/relayer2-base/db/badger"
+	"github.com/aurora-is-near/relayer2-base/types/indexer"
+	"github.com/aurora-is-near/relayer2-base/types/primitives"
+
+	"github.com/aurora-is-near/relayer2-base/db"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
