@@ -80,4 +80,5 @@ prehistoryIndexer:
   from: 0
   to: 47354108                # cannot be higher than prehistoryHeight
   batchSize: 10000
+  chainId: 1313161555
   archiveURL: "postgres://public_readonly:nearprotocol@35.184.214.98/testnet_explorer"
