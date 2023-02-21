@@ -2,7 +2,7 @@ module github.com/aurora-is-near/relayer2-public
 
 go 1.18
 
-//replace github.com/aurora-is-near/relayer2-base => ../relayer2-base
+replace github.com/aurora-is-near/relayer2-base => ../relayer2-base
 
 // The following package had a conflicting dependency.
 // Fixed by pointing the dependency to the latest version tag.
@@ -12,6 +12,7 @@ require (
 	github.com/aurora-is-near/near-api-go v0.0.13-0.20221011140300-30882c6356c4
 	github.com/aurora-is-near/relayer2-base v0.0.0-20230217143726-7d8c2f3ab090
 	github.com/ethereum/go-ethereum v1.10.25
+	github.com/json-iterator/go v1.1.12
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/viper v1.13.0
 	github.com/stretchr/testify v1.8.0
@@ -50,6 +51,8 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mitchellh/pointerstructure v1.2.1 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/near/borsh-go v0.3.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect

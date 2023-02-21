@@ -2,16 +2,18 @@ package endpoint
 
 import (
 	"context"
-	"encoding/json"
 	events "github.com/aurora-is-near/relayer2-base/rpcnode/github-ethereum-go-ethereum/events"
 	"github.com/aurora-is-near/relayer2-base/types/request"
 	"github.com/aurora-is-near/relayer2-base/types/response"
+	jsoniter "github.com/json-iterator/go"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/rpc"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Please note that this file requires the initializations done in the "Main" function of "engineEth_test.go" file
 

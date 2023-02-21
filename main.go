@@ -14,6 +14,8 @@ import (
 	"github.com/aurora-is-near/relayer2-public/endpoint"
 	"github.com/aurora-is-near/relayer2-public/indexer"
 	"github.com/aurora-is-near/relayer2-public/middleware"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,11 +27,17 @@ import (
 )
 
 func main() {
+
 	c := cmd.RootCmd()
 	c.AddCommand(cmd.VersionCmd())
 	c.AddCommand(cmd.StartCmd(func(cmd *cobra.Command, args []string) {
 
 		logger := log.Log()
+
+		go func() {
+			logger.Fatal().Err(http.ListenAndServe(":6066", nil)).Msg("pprof server failed")
+		}()
+
 		bh, err := badger.NewBlockHandler()
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed to start block handler")
@@ -111,7 +119,7 @@ func main() {
 
 		rpcNode.RegisterAPIs(rpcAPIs)
 
-		rpcNode.WithMiddleware("filterIP", "/", middleware.FilterIP)
+		rpcNode.WithMiddleware("filterIP", "/", middleware.FilterIP, middleware.JsonCodec)
 
 		err = rpcNode.Start()
 		if err != nil {

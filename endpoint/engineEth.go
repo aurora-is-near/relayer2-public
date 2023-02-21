@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/aurora-is-near/near-api-go"
 	"github.com/aurora-is-near/relayer2-base/endpoint"
+	"github.com/aurora-is-near/relayer2-base/types"
 	"github.com/aurora-is-near/relayer2-base/types/common"
 	"github.com/aurora-is-near/relayer2-base/types/engine"
 	errs "github.com/aurora-is-near/relayer2-base/types/errors"
@@ -59,18 +60,19 @@ func NewEngineEth(ep *endpoint.Endpoint) *EngineEth {
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On any param returns error code '-32602' with custom message.
-func (e *EngineEth) ChainId(ctx context.Context) (*common.Uint256, error) {
-	return endpoint.Process(ctx, "eth_chainId", e.Endpoint, func(ctx context.Context) (*common.Uint256, error) {
+func (e *EngineEth) ChainId(ctx context.Context) (*types.JsonWrapper[*common.Uint256], error) {
+	return endpoint.Process(ctx, "eth_chainId", e.Endpoint, func(ctx context.Context) (*types.JsonWrapper[*common.Uint256], error) {
 		return e.chainId(ctx)
 	})
 }
 
-func (e *EngineEth) chainId(_ context.Context) (*common.Uint256, error) {
+func (e *EngineEth) chainId(_ context.Context) (*types.JsonWrapper[*common.Uint256], error) {
 	resp, err := e.signer.ViewFunction(utils.AccountId, "get_chain_id", []byte{}, nil)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
-	return getUint256ResultFromEngineResponse(resp)
+	chainId, err := getUint256ResultFromEngineResponse(resp)
+	return types.WrapForJson(chainId), err
 }
 
 // GetCode returns the compiled smart contract code, if any, at a given address
@@ -78,22 +80,23 @@ func (e *EngineEth) chainId(_ context.Context) (*common.Uint256, error) {
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) GetCode(ctx context.Context, address common.Address, number *common.BN64) (*string, error) {
-	return endpoint.Process(ctx, "eth_getCode", e.Endpoint, func(ctx context.Context) (*string, error) {
+func (e *EngineEth) GetCode(ctx context.Context, address common.Address, number *common.BN64) (*types.JsonWrapper[*string], error) {
+	return endpoint.Process(ctx, "eth_getCode", e.Endpoint, func(ctx context.Context) (*types.JsonWrapper[*string], error) {
 		return e.getCode(ctx, address, number)
 	}, address, number)
 }
 
-func (e *EngineEth) getCode(_ context.Context, address common.Address, number *common.BN64) (*string, error) {
+func (e *EngineEth) getCode(_ context.Context, address common.Address, number *common.BN64) (*types.JsonWrapper[*string], error) {
 	resp, err := e.signer.ViewFunction(utils.AccountId, "get_code", address.Bytes(), common.BN64ToInt64(number))
 	if err != nil {
 		// Return "0x" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
-			return utils.Constants.Response0x(), nil
+			return types.WrapForJson(utils.Constants.Response0x()), nil
 		}
 		return nil, &errs.GenericError{Err: err}
 	}
-	return getStringResultFromEngineResponse(resp)
+	code, err := getStringResultFromEngineResponse(resp)
+	return types.WrapForJson(code), err
 }
 
 // GetBalance returns the balance of the account of given address
@@ -101,22 +104,23 @@ func (e *EngineEth) getCode(_ context.Context, address common.Address, number *c
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) GetBalance(ctx context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
-	return endpoint.Process(ctx, "eth_getBalance", e.Endpoint, func(ctx context.Context) (*common.Uint256, error) {
+func (e *EngineEth) GetBalance(ctx context.Context, address common.Address, number *common.BN64) (*types.JsonWrapper[*common.Uint256], error) {
+	return endpoint.Process(ctx, "eth_getBalance", e.Endpoint, func(ctx context.Context) (*types.JsonWrapper[*common.Uint256], error) {
 		return e.getBalance(ctx, address, number)
 	}, address, number)
 }
 
-func (e *EngineEth) getBalance(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
+func (e *EngineEth) getBalance(_ context.Context, address common.Address, number *common.BN64) (*types.JsonWrapper[*common.Uint256], error) {
 	resp, err := e.signer.ViewFunction(utils.AccountId, "get_balance", address.Bytes(), common.BN64ToInt64(number))
 	if err != nil {
 		// Return "0x0" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
-			return utils.Constants.ZeroUint256(), nil
+			return types.WrapForJson(utils.Constants.ZeroUint256()), nil
 		}
 		return nil, &errs.GenericError{Err: err}
 	}
-	return getUint256ResultFromEngineResponse(resp)
+	balance, err := getUint256ResultFromEngineResponse(resp)
+	return types.WrapForJson(balance), err
 }
 
 // GetTransactionCount returns the number of transactions sent from an address
@@ -124,24 +128,25 @@ func (e *EngineEth) getBalance(_ context.Context, address common.Address, number
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) GetTransactionCount(ctx context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
-	return endpoint.Process(ctx, "eth_getTransactionCount", e.Endpoint, func(ctx context.Context) (*common.Uint256, error) {
+func (e *EngineEth) GetTransactionCount(ctx context.Context, address common.Address, number *common.BN64) (*types.JsonWrapper[*common.Uint256], error) {
+	return endpoint.Process(ctx, "eth_getTransactionCount", e.Endpoint, func(ctx context.Context) (*types.JsonWrapper[*common.Uint256], error) {
 		return e.getTransactionCount(ctx, address, number)
 	}, address, number)
 }
 
-func (e *EngineEth) getTransactionCount(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
+func (e *EngineEth) getTransactionCount(_ context.Context, address common.Address, number *common.BN64) (*types.JsonWrapper[*common.Uint256], error) {
 	resp, err := e.signer.ViewFunction(utils.AccountId, "get_nonce", address.Bytes(), common.BN64ToInt64(number))
 	if err != nil {
 		// Return "0x0" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
-			return utils.Constants.ZeroUint256(), nil
+			return types.WrapForJson(utils.Constants.ZeroUint256()), nil
 		} else if strings.Contains(err.Error(), tooManyrequestsError) {
 			return nil, errors.New("engine error 429, too many requests received")
 		}
 		return nil, &errs.GenericError{Err: err}
 	}
-	return getUint256ResultFromEngineResponse(resp)
+	count, err := getUint256ResultFromEngineResponse(resp)
+	return types.WrapForJson(count), err
 }
 
 // GetStorageAt returns the value from a storage position at a given address
@@ -149,13 +154,13 @@ func (e *EngineEth) getTransactionCount(_ context.Context, address common.Addres
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) GetStorageAt(ctx context.Context, address common.Address, storageSlot common.Uint256, number *common.BN64) (*string, error) {
-	return endpoint.Process(ctx, "eth_getStorageAt", e.Endpoint, func(ctx context.Context) (*string, error) {
+func (e *EngineEth) GetStorageAt(ctx context.Context, address common.Address, storageSlot common.Uint256, number *common.BN64) (*types.JsonWrapper[*string], error) {
+	return endpoint.Process(ctx, "eth_getStorageAt", e.Endpoint, func(ctx context.Context) (*types.JsonWrapper[*string], error) {
 		return e.getStorageAt(ctx, address, storageSlot, number)
 	}, address, number)
 }
 
-func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, storageSlot common.Uint256, number *common.BN64) (*string, error) {
+func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, storageSlot common.Uint256, number *common.BN64) (*types.JsonWrapper[*string], error) {
 	argsBuf, err := formatGetStorageAtArgsForEngine(address, storageSlot)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
@@ -165,11 +170,12 @@ func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, stor
 	if err != nil {
 		// Return "0x" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
-			return utils.Constants.ZeroStrUint256(), nil
+			return types.WrapForJson(utils.Constants.ZeroStrUint256()), nil
 		}
 		return nil, &errs.GenericError{Err: err}
 	}
-	return getStringResultFromEngineResponse(resp)
+	storage, err := getStringResultFromEngineResponse(resp)
+	return types.WrapForJson(storage), err
 }
 
 // Call executes a new message call immediately without creating a transaction on the blockchain
@@ -177,13 +183,13 @@ func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, stor
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) Call(ctx context.Context, txs engine.TransactionForCall, number *common.BN64) (*string, error) {
-	return endpoint.Process(ctx, "eth_call", e.Endpoint, func(ctx context.Context) (*string, error) {
+func (e *EngineEth) Call(ctx context.Context, txs engine.TransactionForCall, number *common.BN64) (*types.JsonWrapper[*string], error) {
+	return endpoint.Process(ctx, "eth_call", e.Endpoint, func(ctx context.Context) (*types.JsonWrapper[*string], error) {
 		return e.call(ctx, txs, number)
 	}, txs, number)
 }
 
-func (e *EngineEth) call(_ context.Context, txs engine.TransactionForCall, number *common.BN64) (*string, error) {
+func (e *EngineEth) call(_ context.Context, txs engine.TransactionForCall, number *common.BN64) (*types.JsonWrapper[*string], error) {
 	argsBuf, err := formatCallArgsForEngine(txs)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
@@ -192,7 +198,8 @@ func (e *EngineEth) call(_ context.Context, txs engine.TransactionForCall, numbe
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
-	return getCallResultFromEngineResponse(resp)
+	callResult, err := getCallResultFromEngineResponse(resp)
+	return types.WrapForJson(callResult), err
 }
 
 // SendRawTransaction submits a raw transaction to engine either asynchronously or synchronously based on the configuration
@@ -200,19 +207,22 @@ func (e *EngineEth) call(_ context.Context, txs engine.TransactionForCall, numbe
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) SendRawTransaction(ctx context.Context, txs common.DataVec) (*string, error) {
-	return endpoint.Process(ctx, "eth_sendRawTransaction", e.Endpoint, func(ctx context.Context) (*string, error) {
+func (e *EngineEth) SendRawTransaction(ctx context.Context, txs common.DataVec) (*types.JsonWrapper[*string], error) {
+	return endpoint.Process(ctx, "eth_sendRawTransaction", e.Endpoint, func(ctx context.Context) (*types.JsonWrapper[*string], error) {
 		return e.sendRawTransaction(ctx, txs)
 	}, txs)
 }
 
-func (e *EngineEth) sendRawTransaction(_ context.Context, txs common.DataVec) (*string, error) {
+func (e *EngineEth) sendRawTransaction(_ context.Context, txs common.DataVec) (*types.JsonWrapper[*string], error) {
 	// Call either async or sync version of sendRawTransaction according to the configuration parameter
+	var hash *string
+	var err error
 	if e.Config.EngineConfig.AsyncSendRawTxs {
-		return e.asyncSendRawTransaction(txs)
+		hash, err = e.asyncSendRawTransaction(txs)
 	} else {
-		return e.syncSendRawTransaction(txs)
+		hash, err = e.syncSendRawTransaction(txs)
 	}
+	return types.WrapForJson(hash), err
 }
 
 // asyncSendRawTransaction submits a raw transaction to engine asynchronously

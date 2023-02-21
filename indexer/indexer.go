@@ -1,15 +1,8 @@
 package indexer
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"sync"
-	"time"
-
 	"github.com/aurora-is-near/relayer2-base/broker"
 	"github.com/aurora-is-near/relayer2-base/db"
 	"github.com/aurora-is-near/relayer2-base/log"
@@ -17,7 +10,13 @@ import (
 	"github.com/aurora-is-near/relayer2-base/types/common"
 	"github.com/aurora-is-near/relayer2-base/types/indexer"
 	"github.com/aurora-is-near/relayer2-base/utils"
+	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/net/context"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
 )
 
 type processIndexerState func(*Indexer) processIndexerState
@@ -49,6 +48,8 @@ type Indexer struct {
 	lock   *sync.Mutex
 	stopCh chan bool
 }
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // New creates the indexer, the db.Handler should not be nil
 func New(dbh db.Handler) (*Indexer, error) {
