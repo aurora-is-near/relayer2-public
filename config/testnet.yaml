@@ -64,8 +64,8 @@ indexer:
   sourceFolder: /tmp/relayer/json/
   subFolderBatchSize: 10000   # should match with Aurora refiner batch size, see https://github.com/aurora-is-near/borealis-engine-lib
   keepFiles: true
-  genesisBlock: 9820210       # 9820210 = Aurora Genesis
-  fromBlock: 9820210
+  genesisBlock: 47354108      # 47354108 = Aurora Genesis
+  fromBlock: 47354108
   toBlock: 0                  # 0 = indefinite
   retryCountOnFailure: 10
   waitForBlockMs: 500
@@ -78,7 +78,7 @@ prehistoryIndexer:
   indexFromPrehistory: false
   prehistoryHeight: 47354108
   from: 0
-  to: 47354108                # cannot be higher than prehistoryHeight
+  to: 47354107                # cannot be higher than prehistoryHeight
   batchSize: 10000
   chainId: 1313161555
   archiveURL: "postgres://public_readonly:nearprotocol@35.184.214.98/testnet_explorer"
