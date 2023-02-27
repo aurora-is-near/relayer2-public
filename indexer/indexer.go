@@ -47,7 +47,7 @@ type Indexer struct {
 	s      *indexerState
 	b      broker.Broker
 	lock   *sync.Mutex
-	stopCh chan bool
+	stopCh chan struct{}
 }
 
 // New creates the indexer, the db.Handler should not be nil
@@ -59,13 +59,19 @@ func New(dbh db.Handler) (*Indexer, error) {
 	logger := log.Log()
 	config := GetConfig()
 
+	fromBlockUpdated := false
+	cfgFromBlockOrigin := config.FromBlock
 	fromBlock := config.GenesisBlock
 	if !config.ForceReindex {
 		lb, err := dbh.BlockNumber(context.Background())
 		if err == nil && lb != nil {
-			fromBlock = uint64(*lb)
-			logger.Info().Msgf("latest indexed block: [%d]", fromBlock)
-			fromBlock += 1
+			bn := uint64(*lb)
+			logger.Info().Msgf("latest indexed block: [%d]", bn)
+			// fromBlock should not be updated for pre history blocks
+			if bn >= config.GenesisBlock {
+				fromBlock = bn + 1
+				fromBlockUpdated = true
+			}
 		}
 	}
 
@@ -73,9 +79,13 @@ func New(dbh db.Handler) (*Indexer, error) {
 		logger.Warn().Msgf("overwriting fromBlock: [%d] as [%d]", config.FromBlock, fromBlock)
 		config.FromBlock = fromBlock
 	}
+
 	if (config.ToBlock > DefaultToBlock) && (config.ToBlock <= config.FromBlock) {
-		err := fmt.Errorf("invalid config, toBlock: [%d] must be greater than fromBlock: [%d]", config.ToBlock, config.FromBlock)
-		return nil, err
+		if fromBlockUpdated && (cfgFromBlockOrigin < config.ToBlock) {
+			return nil, fmt.Errorf("given block range is already indexed till [%d]. Please either enable `forceReindex` config to re-index or update the range and re-start the application", config.FromBlock)
+		} else {
+			return nil, fmt.Errorf("invalid config, toBlock: [%d] must be greater than fromBlock: [%d]", config.ToBlock, config.FromBlock)
+		}
 	}
 
 	bs := uint64(config.SubFolderBatchSize)
@@ -101,7 +111,7 @@ func New(dbh db.Handler) (*Indexer, error) {
 			},
 		},
 		lock:   &sync.Mutex{},
-		stopCh: make(chan bool),
+		stopCh: make(chan struct{}),
 	}
 
 	return i, nil
@@ -139,7 +149,6 @@ func (i *Indexer) Close() {
 	defer i.lock.Unlock()
 	if i.s.started {
 		stop(i)
-		i.s.started = false
 	}
 }
 
@@ -150,6 +159,9 @@ func (i *Indexer) index() {
 		f = f(i)
 		select {
 		case <-i.stopCh:
+			i.lock.Lock()
+			defer i.lock.Unlock()
+			i.s.started = false
 			return
 		default:
 		}
@@ -274,8 +286,8 @@ func stop(i *Indexer) processIndexerState {
 	if err != nil {
 		i.l.Error().Err(err).Msg("failed to get last indexed block")
 	}
-	i.l.Info().Msgf("stopping indexer, last indexed block: [%v], current processed block: [%d]", lastBlock, i.s.currBlock)
-	i.stopCh <- true
+	i.l.Info().Msgf("stopping indexer, last indexed block: [%v], current processed block: [%d]", *lastBlock, i.s.currBlock)
+	close(i.stopCh)
 	return nil
 }
 
