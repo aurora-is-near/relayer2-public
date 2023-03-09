@@ -54,6 +54,8 @@ github.com/aurora-is-near/near-api-go v0.0.13-0.20221011140300-30882c6356c4 h1:b
 github.com/aurora-is-near/near-api-go v0.0.13-0.20221011140300-30882c6356c4/go.mod h1:u1KDIqjCl+g+Ndp8izReS5zXI05YWCgQR3iOYXhnhHI=
 github.com/aurora-is-near/relayer2-base v0.0.0-20230217143726-7d8c2f3ab090 h1:5MJlPHBTkC8Q8nvIXrZu5ehKAgi3FL7SWiwWmnQRtnc=
 github.com/aurora-is-near/relayer2-base v0.0.0-20230217143726-7d8c2f3ab090/go.mod h1:zIBX5bsDqLvOSxIiAadgqDxqNF+0ZhT7M4bA7N4Lt70=
+github.com/aurora-is-near/relayer2-base v0.0.0-20230309092022-f450c9c0db8e h1:Hg1G+ht1Qj06JhUfb77FZKldJnCdAP3C4upjHvWhqT4=
+github.com/aurora-is-near/relayer2-base v0.0.0-20230309092022-f450c9c0db8e/go.mod h1:zIBX5bsDqLvOSxIiAadgqDxqNF+0ZhT7M4bA7N4Lt70=
 github.com/aurora-is-near/stream-backup v0.0.0-20221212013533-1e06e263c3f7 h1:aHMsjwM2KJ6EO9H7f1UgFD95c+d9BTpA43NQgZ6hiaM=
 github.com/aurora-is-near/stream-backup v0.0.0-20221212013533-1e06e263c3f7/go.mod h1:71KeQcNFeKIHH0WeppWnXZBfwpGo/YwLK8TtC+r+TfY=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
