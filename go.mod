@@ -10,12 +10,12 @@ replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.2
 
 require (
 	github.com/aurora-is-near/near-api-go v0.0.13-0.20221011140300-30882c6356c4
-	github.com/aurora-is-near/relayer2-base v0.0.0-20230309092022-f450c9c0db8e
+	github.com/aurora-is-near/relayer2-base v1.0.0-rc.1
 	github.com/ethereum/go-ethereum v1.10.25
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/viper v1.13.0
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/net v0.0.0-20221012135044-0b7e1fb9d458
+	golang.org/x/net v0.8.0
 )
 
 require (
@@ -100,8 +100,8 @@ require (
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
 	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a // indirect
-	golang.org/x/sys v0.1.0 // indirect
-	golang.org/x/text v0.3.8 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
