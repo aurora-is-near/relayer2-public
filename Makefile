@@ -26,7 +26,7 @@ build-info:
 	$(E)echo "$(BIN_NAME) build-info ..."
 	$(Q)$(eval __build_branch:="branch: "$(shell git rev-parse --abbrev-ref HEAD))
 	$(Q)$(eval __build_commit:="commit: "$(shell git rev-parse HEAD))
-	$(Q)$(eval __build_tag:="tag: "$(shell git describe --exact-match $(__build_commit) 2>/dev/null))
+	$(Q)$(eval __build_tag:="tag: "$(shell git describe --exact-match $(git rev-parse HEAD) 2>/dev/null))
 	$(E)echo " $(__build_branch)"
 	$(E)echo " $(__build_commit)"
 	$(E)echo " $(__build_tag)"
