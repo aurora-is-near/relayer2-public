@@ -34,6 +34,7 @@ build artifacts are placed in `out` directory
 Relayer requires a set of configuration files to start (see [Configuration] for details), and default configuration files for `mainnet` and `testnet` are 
 provided under `config` directory after build process. If config file path is not specified, Relayer starts with `config/testnet.yaml` 
 by default.
+There is also a convenient script for installing and running Relayer and Refiner. For more information please check out [Standalone Aurora Relayer and Refiner].
 
 ### Configuring a signing key
 
@@ -244,6 +245,7 @@ for detailed explanation and flags of each command see help
 
 [Configuration]: https://github.com/aurora-is-near/relayer2-public#how-to-configure
 [NEAR CLI]: https://docs.near.org/docs/tools/near-cli
+[Standalone Aurora Relayer and Refiner]: https://github.com/aurora-is-near/standalone-rpc
 
 [`web3_clientVersion`]: https://docs.infura.io/infura/networks/ethereum/json-rpc-methods/web3_clientversion
 [`web3_sha3`]: https://openethereum.github.io/JSONRPC-web3-module#web3_sha3
