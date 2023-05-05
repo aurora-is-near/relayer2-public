@@ -85,7 +85,7 @@ func (e *EngineEth) GetCode(ctx context.Context, address common.Address, number 
 }
 
 func (e *EngineEth) getCode(_ context.Context, address common.Address, number *common.BN64) (*string, error) {
-	resp, err := e.signer.ViewFunction(utils.AccountId, "get_code", address.Bytes(), common.BN64ToInt64(number))
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_code", address.Bytes(), number.Int64())
 	if err != nil {
 		// Return "0x" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
@@ -108,7 +108,7 @@ func (e *EngineEth) GetBalance(ctx context.Context, address common.Address, numb
 }
 
 func (e *EngineEth) getBalance(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
-	resp, err := e.signer.ViewFunction(utils.AccountId, "get_balance", address.Bytes(), common.BN64ToInt64(number))
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_balance", address.Bytes(), number.Int64())
 	if err != nil {
 		// Return "0x0" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
@@ -131,7 +131,7 @@ func (e *EngineEth) GetTransactionCount(ctx context.Context, address common.Addr
 }
 
 func (e *EngineEth) getTransactionCount(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
-	resp, err := e.signer.ViewFunction(utils.AccountId, "get_nonce", address.Bytes(), common.BN64ToInt64(number))
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_nonce", address.Bytes(), number.Int64())
 	if err != nil {
 		// Return "0x0" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
@@ -161,7 +161,7 @@ func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, stor
 		return nil, &errs.GenericError{Err: err}
 	}
 
-	resp, err := e.signer.ViewFunction(utils.AccountId, "get_storage_at", argsBuf, common.BN64ToInt64(number))
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_storage_at", argsBuf, number.Int64())
 	if err != nil {
 		// Return "0x" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
@@ -188,7 +188,7 @@ func (e *EngineEth) call(_ context.Context, txs engine.TransactionForCall, numbe
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
-	resp, err := e.signer.ViewFunction(utils.AccountId, "view", argsBuf, common.BN64ToInt64(number))
+	resp, err := e.signer.ViewFunction(utils.AccountId, "view", argsBuf, number.Int64())
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
@@ -209,9 +209,9 @@ func (e *EngineEth) SendRawTransaction(ctx context.Context, txs common.DataVec) 
 func (e *EngineEth) sendRawTransaction(_ context.Context, txs common.DataVec) (*string, error) {
 	// Call either async or sync version of sendRawTransaction according to the configuration parameter
 	if e.Config.EngineConfig.AsyncSendRawTxs {
-		return e.asyncSendRawTransaction(txs)
+		return e.asyncSendRawTransaction(txs.Bytes())
 	} else {
-		return e.syncSendRawTransaction(txs)
+		return e.syncSendRawTransaction(txs.Bytes())
 	}
 }
 
@@ -303,8 +303,7 @@ func getCallResultFromEngineResponse(respArg interface{}) (*string, error) {
 // formatGetStorageAtArgsForEngine gets input address and storage slot arguments
 // and returns the serialized buffer to send to the engine
 func formatGetStorageAtArgsForEngine(addr common.Address, sSlot common.Uint256) ([]byte, error) {
-	argsObj := engine.NewArgsForGetStorageAt().SetFields(addr, sSlot)
-	buff, err := argsObj.Serialize()
+	buff, err := engine.NewArgsForGetStorageAt(addr, sSlot).Serialize()
 	if err != nil {
 		return nil, err
 	}
@@ -368,6 +367,6 @@ func extractTransactionSender(tx *gethtypes.Transaction) (*common.Address, error
 	if err != nil {
 		return nil, err
 	}
-	sender := common.Address{Address: addr}
+	sender := common.BytesToAddress(addr.Bytes())
 	return &sender, nil
 }

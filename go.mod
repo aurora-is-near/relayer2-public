@@ -10,7 +10,7 @@ replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.2
 
 require (
 	github.com/aurora-is-near/near-api-go v0.0.13-0.20221011140300-30882c6356c4
-	github.com/aurora-is-near/relayer2-base v1.0.0-rc.2
+	github.com/aurora-is-near/relayer2-base feature/v1.1.0
 	github.com/ethereum/go-ethereum v1.10.25
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/viper v1.13.0
@@ -39,6 +39,7 @@ require (
 	github.com/google/flatbuffers v22.9.29+incompatible // indirect
 	github.com/hashicorp/go-bexpr v0.1.11 // indirect
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
+	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect

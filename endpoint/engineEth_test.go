@@ -3,22 +3,20 @@ package endpoint
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
+	"github.com/aurora-is-near/relayer2-base/db"
+	"github.com/aurora-is-near/relayer2-base/db/badger"
+	commonEndpoint "github.com/aurora-is-near/relayer2-base/endpoint"
 	"github.com/aurora-is-near/relayer2-base/types/common"
 	"github.com/aurora-is-near/relayer2-base/types/engine"
+	"github.com/aurora-is-near/relayer2-base/types/primitives"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/aurora-is-near/relayer2-base/db"
-	"github.com/aurora-is-near/relayer2-base/db/badger"
-	commonEndpoint "github.com/aurora-is-near/relayer2-base/endpoint"
-
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -140,24 +138,24 @@ func TestMain(m *testing.M) {
 	contractAddrCallTooDeep = common.HexStringToAddress(contractAddressCallTooDeep)
 	contractAddrOutOfOffset = common.HexStringToAddress(contractAddressOutOfOffset)
 
-	contractData, _ = hex.DecodeString(contractCheckMethodData[2:])
-	contractDataStackOverFlow, _ = hex.DecodeString(contractCallToDeepMethodData[2:])
-	contractDataCallTooDeep, _ = hex.DecodeString(contractCallTestMethodData[2:])
-	contractDataOutOfOffset, _ = hex.DecodeString(contractCallTestOOOMethodData[2:])
-	txsInvalidNonce, _ = hex.DecodeString(txsInvalidNonceStr[2:])
-	txsInvalidRawData, _ = hex.DecodeString(txsInvalidRawDataStr[2:])
-	txsLowGasLimit, _ = hex.DecodeString(txsLowGasLimitStr[2:])
-	txsLowGasPrice, _ = hex.DecodeString(txsLowGasPriceStr[2:])
+	contractData = common.HexStringToDataVec(contractCheckMethodData)
+	contractDataStackOverFlow = common.HexStringToDataVec(contractCallToDeepMethodData)
+	contractDataCallTooDeep = common.HexStringToDataVec(contractCallTestMethodData)
+	contractDataOutOfOffset = common.HexStringToDataVec(contractCallTestOOOMethodData)
+	txsInvalidNonce = common.HexStringToDataVec(txsInvalidNonceStr)
+	txsInvalidRawData = common.HexStringToDataVec(txsInvalidRawDataStr)
+	txsLowGasLimit = common.HexStringToDataVec(txsLowGasLimitStr)
+	txsLowGasPrice = common.HexStringToDataVec(txsLowGasPriceStr)
 
 	// If no default provided user the random generated addresses
-	if fromAddr.String() == zeroAddress {
-		rand.Read(fromAddr.Address[:])
+	if fromAddr.Hex() == zeroAddress {
+		rand.Read(fromAddr.Bytes())
 	}
-	if toAddr.String() == zeroAddress {
-		rand.Read(toAddr.Address[:])
+	if toAddr.Hex() == zeroAddress {
+		rand.Read(toAddr.Bytes())
 	}
-	if contractAddr.String() == zeroAddress {
-		rand.Read(contractAddr.Address[:])
+	if contractAddr.Hex() == zeroAddress {
+		rand.Read(contractAddr.Bytes())
 	}
 
 	exitVal := m.Run()
@@ -208,10 +206,10 @@ func TestNetEndpointsCompare(t *testing.T) {
 }
 
 func TestEthEndpointsCompare(t *testing.T) {
-	SafeBlockNumber := common.IntToBN64(-4)
-	FinalizedBlockNumber := common.IntToBN64(-3)
-	PendingBlockNumber := common.IntToBN64(-2)
-	LatestBlockNumber := common.IntToBN64(-1)
+	SafeBlockNumber := common.SafeBlockNumber
+	FinalizedBlockNumber := common.FinalizedBlockNumber
+	PendingBlockNumber := common.PendingBlockNumber
+	LatestBlockNumber := common.LatestBlockNumber
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutSec*time.Second)
 	defer cancel()
@@ -280,6 +278,42 @@ func TestEthEndpointsCompare(t *testing.T) {
 	}
 }
 
+func newTransactionForCall(from, to *common.Address, gas, gasPrice, value *common.Uint256, data *common.DataVec) engine.TransactionForCall {
+
+	var f, t primitives.Data20
+	if from != nil {
+		f = primitives.Data20FromBytes(from.Bytes())
+	}
+	if to != nil {
+		t = primitives.Data20FromBytes(to.Bytes())
+	}
+
+	var g, gp, v primitives.Quantity
+	if gas != nil {
+		g = primitives.QuantityFromBytes(gas.Bytes())
+	}
+	if gasPrice != nil {
+		gp = primitives.QuantityFromBytes(gasPrice.Bytes())
+	}
+	if value != nil {
+		v = primitives.QuantityFromBytes(value.Bytes())
+	}
+
+	var d primitives.VarData
+	if data != nil {
+		d = primitives.VarDataFromBytes(data.Bytes())
+	}
+
+	return engine.TransactionForCall{
+		From:     &f,
+		To:       &t,
+		Gas:      &g,
+		GasPrice: &gp,
+		Value:    &v,
+		Data:     &d,
+	}
+}
+
 func TestEthEndpointsStatic(t *testing.T) {
 	LatestBlockNumber := common.IntToBN64(-1)
 
@@ -300,15 +334,15 @@ func TestEthEndpointsStatic(t *testing.T) {
 		// {"test sync eth_sendRawTransaction low gas price", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasPrice}, false, "gas price too low"},
 		{"test sync eth_sendRawTransaction low gas limit", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasLimit}, false, "intrinsic gas too low"},
 		{"test sync eth_sendRawTransaction incorrect nonce", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidNonce}, false, "ERR_INCORRECT_NONCE"},
-		{"test eth_call contract data", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &contractAddr, Data: contractData}, &LatestBlockNumber}, false, "0x0000000000000000000000000000000000000000000000000000000000000005"},
-		{"test eth_call transfer to EOA", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferVal}, &LatestBlockNumber}, false, "0x"},
+		{"test eth_call contract data", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &contractAddr, nil, nil, nil, &contractData), &LatestBlockNumber}, false, "0x0000000000000000000000000000000000000000000000000000000000000005"},
+		{"test eth_call transfer to EOA", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, nil, nil, &transferVal, nil), &LatestBlockNumber}, false, "0x"},
 		// Needs changes on engine side to be able to run this test properly. Normally, "execution error: Out Of Gas" should be retrieved. Hovewer, since max gas is staticilly applied the result seems to be success
-		{"test eth_call out of gas", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferVal, Gas: &transferValOOF}, &LatestBlockNumber}, false, "0x"},
-		{"test eth_call out of fund", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferValOOF}, &LatestBlockNumber}, false, "Ok(OutOfFund)"},
-		{"test eth_call stack overflow", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{To: &contractAddrStackOverFlow, Data: contractDataStackOverFlow}, &LatestBlockNumber}, false, "EvmError(StackOverflow)"},
+		{"test eth_call out of gas", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, &transferValOOF, nil, &transferVal, nil), &LatestBlockNumber}, false, "0x"},
+		{"test eth_call out of fund", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, nil, nil, &transferValOOF, nil), &LatestBlockNumber}, false, "Ok(OutOfFund)"},
+		{"test eth_call stack overflow", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(nil, &contractAddrStackOverFlow, nil, nil, nil, &contractDataStackOverFlow), &LatestBlockNumber}, false, "EvmError(StackOverflow)"},
 		// Testnet returns "0x" for Revert status, following the same approach
-		{"test eth_call call too deep", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{To: &contractAddrCallTooDeep, Data: contractDataCallTooDeep}, &LatestBlockNumber}, false, "execution reverted without data"},
-		{"test eth_call out of offset", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &contractAddrOutOfOffset, Data: contractDataOutOfOffset}, &LatestBlockNumber}, false, "Ok(OutOfOffset)"},
+		{"test eth_call call too deep", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(nil, &contractAddrCallTooDeep, nil, nil, nil, &contractDataCallTooDeep), &LatestBlockNumber}, false, "execution reverted without data"},
+		{"test eth_call out of offset", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &contractAddrOutOfOffset, nil, nil, nil, &contractDataOutOfOffset), &LatestBlockNumber}, false, "Ok(OutOfOffset)"},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
