@@ -2,9 +2,11 @@ package endpoint
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/aurora-is-near/near-api-go"
 	"github.com/aurora-is-near/relayer2-base/endpoint"
 	"github.com/aurora-is-near/relayer2-base/types/common"
@@ -12,9 +14,6 @@ import (
 	errs "github.com/aurora-is-near/relayer2-base/types/errors"
 	"github.com/aurora-is-near/relayer2-base/utils"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"strings"
-	"time"
 )
 
 var (
@@ -226,7 +225,7 @@ func (e *EngineEth) asyncSendRawTransaction(txsBytes []byte) (*string, error) {
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
-	txsHash := "0x" + hex.EncodeToString(crypto.Keccak256(txsBytes))
+	txsHash := utils.CalculateKeccak256(txsBytes)
 	e.Logger.Info().Msgf("Near txs hash is: %s, for Eth txs hash: %s", *resp, txsHash)
 	return &txsHash, nil
 }
@@ -239,13 +238,13 @@ func (e *EngineEth) syncSendRawTransaction(txsBytes []byte) (*string, error) {
 		return nil, &errs.InvalidParamsError{Message: err.Error()}
 	}
 
-	txsHash := crypto.Keccak256(txsBytes)
+	txsHash := utils.CalculateKeccak256(txsBytes)
 	amount := e.Config.EngineConfig.DepositForNearTxsCall
 	resp, err := e.signer.FunctionCall(utils.AccountId, "submit", txsBytes, e.Config.EngineConfig.GasForNearTxsCall, *amount)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
-	return getTxsResultFromEngineResponse(resp, "0x"+hex.EncodeToString(txsHash))
+	return getTxsResultFromEngineResponse(resp, txsHash)
 }
 
 // sendRawTransactionWithRetry send the Txs with a constant configurable retry count and duration in case of error
