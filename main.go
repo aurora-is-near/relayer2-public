@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/aurora-is-near/relayer2-base/cmd"
 	"github.com/aurora-is-near/relayer2-base/db"
 	"github.com/aurora-is-near/relayer2-base/db/badger"
@@ -11,24 +15,21 @@ import (
 	"github.com/aurora-is-near/relayer2-base/indexer/tar"
 	"github.com/aurora-is-near/relayer2-base/log"
 	goEthereum "github.com/aurora-is-near/relayer2-base/rpcnode/github-ethereum-go-ethereum"
-	"github.com/aurora-is-near/relayer2-public/endpoint"
-	"github.com/aurora-is-near/relayer2-public/indexer"
-	"github.com/aurora-is-near/relayer2-public/middleware"
-	"os"
-	"os/signal"
-	"syscall"
-
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/aurora-is-near/relayer2-public/endpoint"
+	"github.com/aurora-is-near/relayer2-public/indexer"
+	"github.com/aurora-is-near/relayer2-public/localproxy"
+	"github.com/aurora-is-near/relayer2-public/middleware"
 )
 
 func main() {
 	c := cmd.RootCmd()
 	c.AddCommand(cmd.VersionCmd())
 	c.AddCommand(cmd.StartCmd(func(cmd *cobra.Command, args []string) {
-
 		logger := log.Log()
 		bh, err := badger.NewBlockHandler()
 		if err != nil {
@@ -49,6 +50,12 @@ func main() {
 
 		// order of processors are important
 		baseEndpoint.WithProcessor(processor.NewEnableDisable())
+		if p, err := localproxy.New(); err == nil {
+			baseEndpoint.WithProcessor(p)
+			defer p.Close()
+		} else {
+			logger.Err(err).Msg("failed to set up localproxy service")
+		}
 		baseEndpoint.WithProcessor(processor.NewProxy())
 
 		ethEndpoint := commonEndpoint.NewEth(baseEndpoint)
