@@ -9,12 +9,17 @@ import (
 	"net"
 	"time"
 
+	"github.com/aurora-is-near/relayer2-base/cmd"
 	"github.com/aurora-is-near/relayer2-base/endpoint"
+	"github.com/aurora-is-near/relayer2-base/log"
 	"github.com/aurora-is-near/relayer2-base/types/common"
 	"github.com/aurora-is-near/relayer2-base/types/engine"
 	"github.com/aurora-is-near/relayer2-base/types/response"
 	"github.com/buger/jsonparser"
+	"github.com/spf13/viper"
 )
+
+const configPath = "endpoint.localproxy"
 
 type RPCClient interface {
 	TraceTransaction(hash common.H256) (*response.CallFrame, error)
@@ -22,17 +27,40 @@ type RPCClient interface {
 	Close() error
 }
 
+type Config struct {
+	Network string        `mapstructure:"network"`
+	Address string        `mapstructure:"address"`
+	Timeout time.Duration `mapstructure:"timeout"`
+}
+
+func GetConfig() *Config {
+	config := &Config{
+		Network: "unix",
+		Timeout: 5 * time.Second,
+	}
+	sub := viper.Sub(configPath)
+	if sub != nil {
+		cmd.BindSubViper(sub, configPath)
+		if err := sub.Unmarshal(&config); err != nil {
+			log.Log().Warn().Err(err).Msgf("failed to parse configuration [%s] from [%s], "+
+				"falling back to defaults", configPath, viper.ConfigFileUsed())
+		}
+	}
+	return config
+}
+
 type LocalProxy struct {
+	Config *Config
 	client RPCClient
 }
 
 func New() (*LocalProxy, error) {
-	address := "" // TODO config format
-	client, err := newRPCClient(address)
+	conf := GetConfig()
+	client, err := newRPCClient(conf.Address, conf.Timeout)
 	if err != nil {
 		return nil, err
 	}
-	return &LocalProxy{client}, err
+	return &LocalProxy{conf, client}, err
 }
 
 func (l *LocalProxy) Close() error {
@@ -93,7 +121,7 @@ type rpcClient struct {
 	buf  []byte
 }
 
-func newRPCClient(address string) (*rpcClient, error) {
+func newRPCClient(address string, timeout time.Duration) (*rpcClient, error) {
 	c, err := net.Dial("unix", address)
 	if err != nil {
 		return nil, err
@@ -149,7 +177,7 @@ func (rc *rpcClient) TraceTransaction(hash common.H256) (*response.CallFrame, er
 			traces = append(traces, trace)
 		})
 		if len(traces) != 1 {
-			return nil, err
+			return nil, errors.New("unexpected response")
 		}
 		return traces[0], err
 
