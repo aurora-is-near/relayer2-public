@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/aurora-is-near/relayer2-base/cmd"
@@ -118,6 +119,7 @@ func (*LocalProxy) Post(ctx context.Context, _ string, _ *any, _ *error) context
 
 type rpcClient struct {
 	conn    net.Conn
+	lock    sync.Mutex
 	timeout time.Duration
 }
 
@@ -126,7 +128,10 @@ func newRPCClient(address string, timeout time.Duration) (*rpcClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &rpcClient{c, timeout}, nil
+	return &rpcClient{
+		conn:    c,
+		timeout: timeout,
+	}, nil
 }
 
 func (rc *rpcClient) Close() error {
@@ -225,6 +230,8 @@ func (rc *rpcClient) EstimateGas(tx engine.TransactionForCall, number *common.BN
 }
 
 func (rc *rpcClient) request(req []byte) ([]byte, error) {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
 	err := rc.conn.SetDeadline(time.Now().Add(rc.timeout))
 	if err != nil {
 		return nil, err
