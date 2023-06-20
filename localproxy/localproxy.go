@@ -3,9 +3,11 @@ package localproxy
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"time"
 
@@ -114,11 +116,9 @@ func (*LocalProxy) Post(ctx context.Context, _ string, _ *any, _ *error) context
 	return ctx
 }
 
-const bufSize = 2 << 12
-
 type rpcClient struct {
-	conn net.Conn
-	buf  []byte
+	conn    net.Conn
+	timeout time.Duration
 }
 
 func newRPCClient(address string, timeout time.Duration) (*rpcClient, error) {
@@ -126,7 +126,7 @@ func newRPCClient(address string, timeout time.Duration) (*rpcClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &rpcClient{c, make([]byte, bufSize)}, nil
+	return &rpcClient{c, timeout}, nil
 }
 
 func (rc *rpcClient) Close() error {
@@ -186,24 +186,6 @@ func (rc *rpcClient) TraceTransaction(hash common.H256) (*response.CallFrame, er
 	}
 }
 
-func (rc *rpcClient) request(req []byte) ([]byte, error) {
-	err := rc.conn.SetDeadline(time.Now().Add(5 * time.Second)) // TODO add to config
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = rc.conn.Write(req)
-	if err != nil {
-		return nil, err
-	}
-
-	n, err := rc.conn.Read(rc.buf)
-	if err != nil {
-		return nil, err
-	}
-	return rc.buf[:n], nil
-}
-
 func (rc *rpcClient) EstimateGas(tx engine.TransactionForCall, number *common.BN64) (*common.Uint256, error) {
 	req, err := buildRequest("eth_estimateGas", tx, number)
 	if err != nil {
@@ -240,6 +222,33 @@ func (rc *rpcClient) EstimateGas(tx engine.TransactionForCall, number *common.BN
 	default:
 		return nil, errors.New("failed to parse unexpected response")
 	}
+}
+
+func (rc *rpcClient) request(req []byte) ([]byte, error) {
+	err := rc.conn.SetDeadline(time.Now().Add(rc.timeout))
+	if err != nil {
+		return nil, err
+	}
+
+	err = binary.Write(rc.conn, binary.LittleEndian, uint32(len(req)))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = rc.conn.Write(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var l uint32
+	err = binary.Read(rc.conn, binary.LittleEndian, &l)
+	if err != nil {
+		return nil, err
+	}
+
+	buf := make([]byte, l)
+	_, err = io.ReadFull(rc.conn, buf)
+	return buf, err
 }
 
 func buildRequest(method string, params ...any) ([]byte, error) {
