@@ -1,4 +1,4 @@
-package localproxy
+package standaloneproxy
 
 import (
 	"testing"
@@ -13,6 +13,11 @@ func TestBuildRequest(t *testing.T) {
 		params []any
 		want   string
 	}{
+		{
+			method: "foobar",
+			params: []any{},
+			want:   `{"id":1,"jsonrpc":"2.0","method":"foobar","params":[]}`,
+		},
 		{
 			method: "foobar",
 			params: []any{

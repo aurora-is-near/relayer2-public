@@ -1,4 +1,4 @@
-package localproxy
+package standaloneproxy
 
 import (
 	"bytes"
@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const configPath = "endpoint.localproxy"
+const configPath = "endpoint.standaloneproxy"
 
 type RPCClient interface {
 	TraceTransaction(hash common.H256) (*response.CallFrame, error)
@@ -52,26 +52,26 @@ func GetConfig() *Config {
 	return config
 }
 
-type LocalProxy struct {
+type StandaloneProxy struct {
 	Config *Config
 	client RPCClient
 }
 
-func New() (*LocalProxy, error) {
+func New() (*StandaloneProxy, error) {
 	conf := GetConfig()
 	client, err := newRPCClient(conf.Address, conf.Timeout)
 	if err != nil {
 		return nil, err
 	}
-	return &LocalProxy{conf, client}, err
+	return &StandaloneProxy{conf, client}, err
 }
 
-func (l *LocalProxy) Close() error {
+func (l *StandaloneProxy) Close() error {
 	return l.client.Close()
 }
 
 // Pre implements endpoint.Processor.
-func (l *LocalProxy) Pre(ctx context.Context, name string, _ *endpoint.Endpoint, response *any, args ...any) (context.Context, bool, error) {
+func (l *StandaloneProxy) Pre(ctx context.Context, name string, _ *endpoint.Endpoint, response *any, args ...any) (context.Context, bool, error) {
 	switch name {
 	case "debug_traceTransaction":
 		if len(args) != 1 {
@@ -113,7 +113,7 @@ func (l *LocalProxy) Pre(ctx context.Context, name string, _ *endpoint.Endpoint,
 }
 
 // Post implements endpoint.Processor.
-func (*LocalProxy) Post(ctx context.Context, _ string, _ *any, _ *error) context.Context {
+func (*StandaloneProxy) Post(ctx context.Context, _ string, _ *any, _ *error) context.Context {
 	return ctx
 }
 

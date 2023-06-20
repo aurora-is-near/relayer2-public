@@ -22,8 +22,8 @@ import (
 
 	"github.com/aurora-is-near/relayer2-public/endpoint"
 	"github.com/aurora-is-near/relayer2-public/indexer"
-	"github.com/aurora-is-near/relayer2-public/localproxy"
 	"github.com/aurora-is-near/relayer2-public/middleware"
+	"github.com/aurora-is-near/relayer2-public/standaloneproxy"
 )
 
 func main() {
@@ -50,11 +50,11 @@ func main() {
 
 		// order of processors are important
 		baseEndpoint.WithProcessor(processor.NewEnableDisable())
-		if p, err := localproxy.New(); err == nil {
+		if p, err := standaloneproxy.New(); err == nil {
 			baseEndpoint.WithProcessor(p)
 			defer p.Close()
 		} else {
-			logger.Err(err).Msg("failed to set up localproxy service")
+			logger.Err(err).Msg("failed to set up standalone proxy")
 		}
 		baseEndpoint.WithProcessor(processor.NewProxy())
 
