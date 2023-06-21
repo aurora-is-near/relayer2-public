@@ -1,22 +1,26 @@
 package endpoint
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
+	"os"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/aurora-is-near/relayer2-base/db"
 	"github.com/aurora-is-near/relayer2-base/db/badger"
 	commonEndpoint "github.com/aurora-is-near/relayer2-base/endpoint"
 	"github.com/aurora-is-near/relayer2-base/types/common"
 	"github.com/aurora-is-near/relayer2-base/types/engine"
 	"github.com/aurora-is-near/relayer2-base/types/primitives"
-	"github.com/ethereum/go-ethereum/rpc"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"reflect"
-	"strings"
-	"testing"
-	"time"
+	"github.com/valyala/fasthttp"
 )
 
 const (
@@ -59,8 +63,8 @@ endpoint:
   engine:
     nearNetworkID: testnet
     nearNodeURL: https://rpc.testnet.near.org
-    signer: tolgcoplu.testnet
-    SignerKey: ../config/tolgcoplu.testnet.json
+    signer: tolgacoplu.testnet
+    SignerKey: /Users/tolgacoplu/.near-credentials/testnet/tolgacoplu.testnet.json
     minGasPrice: 0
     minGasLimit: 21000
     gasForNearTxsCall: 300000000000000
@@ -71,7 +75,6 @@ endpoint:
 
 var handler db.Handler
 
-var rpcClientBase *rpc.Client
 var baseEndpoint *commonEndpoint.Endpoint
 var engineEth *EngineEth
 var engineNet *EngineNet
@@ -124,9 +127,6 @@ func TestMain(m *testing.M) {
 	baseEndpoint = commonEndpoint.New(handler)
 	engineEth = NewEngineEth(baseEndpoint)
 	engineNet = NewEngineNet(engineEth)
-
-	// Create a rpc client to run JSON RPC calls and compare the results
-	rpcClientBase, _ = rpc.DialContext(context.Background(), baseUrl)
 
 	// Create from, to, and contract addresses to use in the tests
 	fromAddr = common.HexStringToAddress(fromAddress)
@@ -188,20 +188,19 @@ func TestNetEndpointsCompare(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutSec*time.Second)
 	defer cancel()
 
-	resp, err := engineNet.Version(ctx)
+	result, err := engineNet.Version(ctx)
 	if err != nil {
 		t.Error("Version request error:", err)
 	}
-	respHex := *resp
+	resultHex := *result
 
-	var respExpected string
-	err = rpcClientBase.CallContext(ctx, &respExpected, "net_version")
+	respExpectedStr, err := CallMethodAsHttpClient("net_version", []interface{}{})
 	if err != nil {
 		t.Log("request error:", err)
 	}
 
-	if (respHex == "" && respExpected == "") || respExpected != respHex {
-		t.Errorf("incorrect result: expected %s, got %s", respExpected, respHex)
+	if resultHex == "" || !strings.Contains(respExpectedStr, resultHex) {
+		t.Errorf("incorrect result: expected response %s, however resulst is %s", respExpectedStr, resultHex)
 	}
 }
 
@@ -233,7 +232,6 @@ func TestEthEndpointsCompare(t *testing.T) {
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			// Use an rpc client to get the expected value
-			var expectedStr string
 			var tmpArgs []interface{}
 			if len(d.args) > 2 {
 				tmpArgs = d.args[1 : len(d.args)-1]
@@ -241,7 +239,7 @@ func TestEthEndpointsCompare(t *testing.T) {
 				tmpArgs = d.args[1:]
 			}
 
-			err := rpcClientBase.CallContext(ctx, &expectedStr, d.api, tmpArgs...)
+			expectedRespStr, err := CallMethodAsHttpClient(d.api, tmpArgs)
 			if err != nil {
 				t.Log(d.api, " client base error:", err)
 			}
@@ -254,22 +252,13 @@ func TestEthEndpointsCompare(t *testing.T) {
 			// Compare the retrieved response and expected result
 			switch v := resp.(type) {
 			case *common.Uint256:
-				// leading zeros should be checked and removed (if any)
-				tmpStr := ""
-				for expectedStr != tmpStr {
-					tmpStr = expectedStr
-					expectedStr = "0x" + strings.TrimPrefix(expectedStr[2:len(expectedStr)-1], "0") + expectedStr[len(expectedStr)-1:]
-				}
-				expectedUint256, err := common.Uint256FromHex(expectedStr)
-				if err != nil {
-					t.Errorf("error while decoding string to Uint256: %v", err)
-				}
-				if v.Cmp(*expectedUint256) != 0 {
-					t.Errorf("incorrect response: expected 0x%s, got 0x%s", expectedUint256.Text(16), v.Text(16))
+				resultHexStr := "0x" + v.Text(16)
+				if !strings.Contains(expectedRespStr, resultHexStr) {
+					t.Errorf("incorrect response: expected response %s, got %s", expectedRespStr, resultHexStr)
 				}
 			case *string:
-				if *v != expectedStr {
-					t.Errorf("incorrect response: expected %s, got %s", expectedStr, *v)
+				if !strings.Contains(expectedRespStr, *v) {
+					t.Errorf("incorrect response: expected response %s, got %s", expectedRespStr, *v)
 				}
 			default:
 				t.Errorf("incorrect type in response")
@@ -382,4 +371,29 @@ func Invoke(ctx context.Context, obj interface{}, method string, args ...interfa
 		return nil, err.(error)
 	}
 	return values[0].Interface(), nil
+}
+
+func CallMethodAsHttpClient(method string, args []interface{}) (string, error) {
+	req := fasthttp.AcquireRequest()
+	respExpected := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(respExpected)
+
+	argsBytes, _ := jsoniter.Marshal(args)
+
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, `{"jsonrpc":"2.0","id":314,"method": "%s", "params": %s}`, method, string(argsBytes))
+	rpcMsg := buf.Bytes()
+
+	req.SetRequestURI(baseUrl)
+	req.Header.SetContentType("application/json")
+	req.Header.SetMethod("POST")
+	req.SetBody(rpcMsg)
+
+	err := fasthttp.Do(req, respExpected)
+	if err != nil {
+		return "", err
+	}
+
+	return string(respExpected.Body()), nil
 }

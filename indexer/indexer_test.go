@@ -1,7 +1,6 @@
 package indexer
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/aurora-is-near/relayer2-base/db/badger"
 	"github.com/aurora-is-near/relayer2-base/types/indexer"
@@ -792,7 +793,7 @@ func createFiles(blocks []string, truncate int) {
 
 	for _, b := range blocks {
 		buff = []byte(b)
-		err = json.Unmarshal(buff, &block)
+		err = jsoniter.Unmarshal(buff, &block)
 		if err != nil {
 			panic(err)
 		}

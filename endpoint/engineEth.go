@@ -183,6 +183,10 @@ func (e *EngineEth) Call(ctx context.Context, txs engine.TransactionForCall, num
 }
 
 func (e *EngineEth) call(_ context.Context, txs engine.TransactionForCall, number *common.BN64) (*string, error) {
+	err := txs.Validate()
+	if err != nil {
+		return nil, err
+	}
 	argsBuf, err := formatCallArgsForEngine(txs)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
@@ -227,7 +231,8 @@ func (e *EngineEth) asyncSendRawTransaction(txsBytes []byte) (*string, error) {
 	}
 	txsHash := utils.CalculateKeccak256(txsBytes)
 	e.Logger.Info().Msgf("Near txs hash is: %s, for Eth txs hash: %s", *resp, txsHash)
-	return &txsHash, nil
+	
+  return &txsHash, nil
 }
 
 // syncSendRawTransaction submits a raw transaction to engine synchronously
