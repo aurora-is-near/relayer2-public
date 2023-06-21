@@ -17,6 +17,9 @@
 # JetBrains IDEs
 .idea/*
 
+# VSCode IDEs
+.vscode/*
+
 # Tmp test folder for unit tests
 */test/**
 

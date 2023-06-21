@@ -43,25 +43,16 @@ endpoint:
   disabledEndpoints:
     -
 rpcNode:
-  geth:
-    HTTPHost: localhost
-    HTTPPort: 8545
-    HTTPCors: 
-      - "*"
-    HTTPVirtualHosts: 
-      - "*"
-    HTTPModules:
-      - "net"
-      - "web3"
-      - "eth"
-      - "parity"
-    WSHost: localhost
-    WSPort: 8545
-    WSModules:
-      - "net"
-      - "web3"
-      - "eth"
-      - "parity"
+  httpHost: localhost
+  httpPort: 8545
+  httpCors: 
+    - "*"
+  httpCompress: true
+  httpTimeout: 300 # in seconds
+  wsHost: localhost # Both wsHost and wsPort are mandatory to start the websocket
+  wsPort: 8545 # Both wsHost and wsPort are mandatory to start the websocket
+  wsHandshakeTimeout: 10 # in seconds
+  maxBatchRequests: 1000
 indexer:
   sourceFolder: /tmp/relayer/json/
   subFolderBatchSize: 10000   # should match with Aurora refiner batch size, see https://github.com/aurora-is-near/borealis-engine-lib
@@ -84,4 +75,3 @@ prehistoryIndexer:
   batchSize: 10000
   prehistoryChainId: 1313161554
   archiveURL: "postgres://public_readonly:nearprotocol@104.199.89.51/mainnet_explorer"
-
