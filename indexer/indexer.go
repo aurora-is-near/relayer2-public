@@ -1,7 +1,6 @@
 package indexer
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/aurora-is-near/relayer2-base/broker"
 	"github.com/aurora-is-near/relayer2-base/db"
@@ -201,7 +202,7 @@ func read(i *Indexer) processIndexerState {
 		return next
 	}
 
-	err = json.Unmarshal(buff, &i.s.block)
+	err = jsoniter.Unmarshal(buff, &i.s.block)
 	if next := i.evalError(err, read, stop); next != nil {
 		return next
 	}

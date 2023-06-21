@@ -1,17 +1,20 @@
 package middleware
 
 import (
-	"github.com/aurora-is-near/relayer2-base/log"
-	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/viper"
+	"context"
 	"io/fs"
 	"net"
-	"net/http"
-	"strings"
+
+	"github.com/aurora-is-near/relayer2-base/log"
+	"github.com/aurora-is-near/relayer2-base/rpc"
+	errs "github.com/aurora-is-near/relayer2-base/types/errors"
+	"github.com/aurora-is-near/relayer2-base/utils"
+	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/viper"
 )
 
 const (
-	configPath            = "endpoint.filterFilePath"
+	filterConfigPath      = "endpoint.filterFilePath"
 	defaultFilterFilePath = "config/filter.yaml"
 )
 
@@ -20,10 +23,9 @@ type filter struct {
 	list   []*net.IPNet
 }
 
-func FilterIP(next http.Handler) http.Handler {
-
+func FilterIP() rpc.Middleware {
 	// use global viper to get filter config file path
-	filterFile := viper.GetString(configPath)
+	filterFile := viper.GetString(filterConfigPath)
 	if filterFile == "" {
 		filterFile = defaultFilterFilePath
 	}
@@ -50,75 +52,42 @@ func FilterIP(next http.Handler) http.Handler {
 		setConfig(&f, v)
 	})
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if len(f.list) > 0 {
-			ip, err := getSourceIP(r)
-			if err != nil || ip == nil { // not likely but possible
-				http.Error(w, "", http.StatusInternalServerError)
-				return
-			}
-			if f.policy == "allow" {
-				for _, ipNet := range f.list {
-					if ipNet.Contains(ip) {
-						next.ServeHTTP(w, r)
-						return
+	return func(handler rpc.RpcHandler) rpc.RpcHandler {
+		return func(ctx *context.Context, rpcCtx *rpc.RpcContext) *rpc.RpcContext {
+			if len(f.list) > 0 {
+
+				clientIp, supported := utils.ClientIpFromContext(*ctx)
+				if !supported || clientIp == nil {
+					return rpcCtx.SetErrorObject(&errs.InternalError{Message: "unknown client"})
+				}
+				if f.policy == "allow" {
+					for _, ipNet := range f.list {
+						if ipNet.Contains(*clientIp) {
+							return handler(ctx, rpcCtx)
+						}
+					}
+					log.Log().Warn().Msgf("IP [%s] is in blacklist", clientIp)
+					return rpcCtx.SetErrorObject(&errs.InternalError{Message: "forbidden client"})
+				} else {
+					for _, ipNet := range f.list {
+						if ipNet.Contains(*clientIp) {
+							log.Log().Warn().Msgf("IP [%s] is in blacklist", clientIp)
+							return rpcCtx.SetErrorObject(&errs.InternalError{Message: "forbidden client"})
+						}
 					}
 				}
-				log.Log().Warn().Msgf("IP [%s] is in blacklist", ip)
-				http.Error(w, "", http.StatusForbidden)
-				return
-			} else {
-				for _, ipNet := range f.list {
-					if ipNet.Contains(ip) {
-						log.Log().Warn().Msgf("IP [%s] is in blacklist", ip)
-						http.Error(w, "", http.StatusForbidden)
-						return
-					}
-				}
 			}
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func getSourceIP(r *http.Request) (net.IP, error) {
-
-	// Check the Forwarded header
-	forwardedHeader := r.Header.Get("Forwarded")
-	if forwardedHeader != "" {
-		parts := strings.Split(forwardedHeader, ",")
-		firstPart := strings.TrimSpace(parts[0])
-		subParts := strings.Split(firstPart, ";")
-		for _, part := range subParts {
-			normalisedPart := strings.ToLower(strings.TrimSpace(part))
-			if strings.HasPrefix(normalisedPart, "for=") {
-				return net.ParseIP(normalisedPart[4:]), nil
-			}
+			return handler(ctx, rpcCtx)
 		}
 	}
-
-	// Check the X-Forwarded-For header
-	xForwardedForHeader := r.Header.Get("X-Forwarded-For")
-	if xForwardedForHeader != "" {
-		parts := strings.Split(xForwardedForHeader, ",")
-		lastPart := strings.TrimSpace(parts[len(parts)-1])
-		return net.ParseIP(lastPart), nil
-	}
-
-	// Check on the request
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	return net.ParseIP(host), nil
 }
 
+// setConfig sets provided configuration to the provided filter
 func setConfig(f *filter, v *viper.Viper) {
 	p := v.GetString("filter.IP.policy")
 	l := v.GetStringSlice("filter.IP.list")
 
-	if "allow" == p {
+	if p == "allow" {
 		f.policy = p
 	} else {
 		f.policy = "deny"

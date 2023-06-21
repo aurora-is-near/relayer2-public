@@ -2,36 +2,41 @@ package endpoint
 
 import (
 	"context"
+	"errors"
+
 	"github.com/aurora-is-near/relayer2-base/broker"
 	"github.com/aurora-is-near/relayer2-base/endpoint"
-	eventbroker "github.com/aurora-is-near/relayer2-base/rpcnode/github-ethereum-go-ethereum/events"
+	"github.com/aurora-is-near/relayer2-base/rpc"
+	"github.com/aurora-is-near/relayer2-base/rpc/node/events"
 	"github.com/aurora-is-near/relayer2-base/types/event"
 	"github.com/aurora-is-near/relayer2-base/types/request"
-
-	"github.com/ethereum/go-ethereum/rpc"
 )
 
-type EventsForGoEth struct {
+var (
+	ErrNotificationsUnsupported = errors.New("notifications not supported")
+)
+
+type EventsEth struct {
 	*endpoint.Endpoint
 	eventBroker broker.Broker
 	newHeadsCh  chan event.Block
 	logsCh      chan event.Logs
 }
 
-func NewEventsForGoEth(ep *endpoint.Endpoint, eb broker.Broker) *EventsForGoEth {
-	return &EventsForGoEth{
+func NewEventsEth(ep *endpoint.Endpoint, eb broker.Broker) *EventsEth {
+	return &EventsEth{
 		Endpoint:    ep,
 		eventBroker: eb,
-		newHeadsCh:  make(chan event.Block, eventbroker.NewHeadsChSize),
-		logsCh:      make(chan event.Logs, eventbroker.LogsChSize),
+		newHeadsCh:  make(chan event.Block, events.NewHeadsChSize),
+		logsCh:      make(chan event.Logs, events.LogsChSize),
 	}
 }
 
 // NewHeads send a notification each time a new block is appended to the chain, including chain reorganizations.
-func (e *EventsForGoEth) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
+func (e *EventsEth) NewHeads(ctx context.Context) (*rpc.ID, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
-		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
+		return nil, ErrNotificationsUnsupported
 	}
 	rpcSub := notifier.CreateSubscription()
 
@@ -44,21 +49,18 @@ func (e *EventsForGoEth) NewHeads(ctx context.Context) (*rpc.Subscription, error
 			case <-rpcSub.Err():
 				e.eventBroker.UnsubscribeFromNewHeads(newHeadsSubs)
 				return
-			case <-notifier.Closed():
-				e.eventBroker.UnsubscribeFromNewHeads(newHeadsSubs)
-				return
 			}
 		}
 	}()
 
-	return rpcSub, nil
+	return &rpcSub.ID, nil
 }
 
 // Logs send a notification each time logs included in new imported block and match the given filter criteria.
-func (e *EventsForGoEth) Logs(ctx context.Context, subOpts request.LogSubscriptionOptions) (*rpc.Subscription, error) {
+func (e *EventsEth) Logs(ctx context.Context, subOpts request.LogSubscriptionOptions) (*rpc.ID, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
-		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
+		return nil, ErrNotificationsUnsupported
 	}
 	rpcSub := notifier.CreateSubscription()
 
@@ -73,12 +75,9 @@ func (e *EventsForGoEth) Logs(ctx context.Context, subOpts request.LogSubscripti
 			case <-rpcSub.Err():
 				e.eventBroker.UnsubscribeFromLogs(logsSubs)
 				return
-			case <-notifier.Closed():
-				e.eventBroker.UnsubscribeFromLogs(logsSubs)
-				return
 			}
 		}
 	}()
 
-	return rpcSub, nil
+	return &rpcSub.ID, nil
 }
