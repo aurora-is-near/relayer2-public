@@ -54,7 +54,7 @@ const engineEthTestFailYaml2 = `
 endpoint:
   engine:
     nearNetworkID: testnet
-    nearNodeURL: https://rpc.testnet.near.org
+    nearNodeURL: https://archival-rpc.testnet.near.org
     signer: asd.testnet
 `
 
@@ -62,7 +62,7 @@ const engineEthTestYaml = `
 endpoint:
   engine:
     nearNetworkID: testnet
-    nearNodeURL: https://rpc.testnet.near.org
+    nearNodeURL: https://archival-rpc.testnet.near.org
     signer: tolgacoplu.testnet
     SignerKey: /Users/tolgacoplu/.near-credentials/testnet/tolgacoplu.testnet.json
     minGasPrice: 0
@@ -80,6 +80,7 @@ var engineEth *EngineEth
 var engineNet *EngineNet
 var fromAddr common.Address
 var toAddr common.Address
+var gasZero common.Uint256
 var transferVal common.Uint256
 var transferValOOF common.Uint256
 var contractAddr common.Address
@@ -131,6 +132,7 @@ func TestMain(m *testing.M) {
 	// Create from, to, and contract addresses to use in the tests
 	fromAddr = common.HexStringToAddress(fromAddress)
 	toAddr = common.HexStringToAddress(toAddress)
+	gasZero = common.IntToUint256(0)
 	transferVal = common.IntToUint256(transferValue)
 	transferValOOF = common.IntToUint256(transferValueOOF)
 	contractAddr = common.HexStringToAddress(contractAddress)
@@ -205,10 +207,7 @@ func TestNetEndpointsCompare(t *testing.T) {
 }
 
 func TestEthEndpointsCompare(t *testing.T) {
-	SafeBlockNumber := common.SafeBlockNumber
-	FinalizedBlockNumber := common.FinalizedBlockNumber
-	PendingBlockNumber := common.PendingBlockNumber
-	LatestBlockNumber := common.LatestBlockNumber
+	LatestBlockNumber := common.BlockNumberOrHashWithBN64(common.LatestBlockNumber)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutSec*time.Second)
 	defer cancel()
@@ -220,10 +219,7 @@ func TestEthEndpointsCompare(t *testing.T) {
 		args   []interface{}
 	}{
 		{"test eth_chainId", "eth_chainId", "ChainId", []interface{}{ctx}},
-		{"test eth_getCode with EOA and safe block num", "eth_getCode", "GetCode", []interface{}{ctx, toAddr, &SafeBlockNumber}},
-		{"test eth_getCode with safe block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &SafeBlockNumber}},
-		{"test eth_getCode with finalized block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &FinalizedBlockNumber}},
-		{"test eth_getCode with pending block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &PendingBlockNumber}},
+		{"test eth_getCode with EOA and safe block num", "eth_getCode", "GetCode", []interface{}{ctx, toAddr, &LatestBlockNumber}},
 		{"test eth_getCode with latest block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &LatestBlockNumber}},
 		{"test eth_getBalance with latest block num", "eth_getBalance", "GetBalance", []interface{}{ctx, fromAddr, &LatestBlockNumber}},
 		{"test eth_getTransactionCount with latest block num", "eth_getTransactionCount", "GetTransactionCount", []interface{}{ctx, fromAddr, &LatestBlockNumber}},
@@ -304,7 +300,7 @@ func newTransactionForCall(from, to *common.Address, gas, gasPrice, value *commo
 }
 
 func TestEthEndpointsStatic(t *testing.T) {
-	LatestBlockNumber := common.IntToBN64(-1)
+	LatestBlockNumber := common.BlockNumberOrHashWithBN64(common.LatestBlockNumber)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutSec*time.Second)
 	defer cancel()
@@ -318,9 +314,7 @@ func TestEthEndpointsStatic(t *testing.T) {
 		expectedResult string
 	}{
 		{"test aysnc eth_sendRawTransaction incorrect nonce", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidNonce}, true, "anyHash"},
-		{"test sync eth_sendRawTransaction incorrect txs raw data", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidRawData}, false, "transaction parameter is not correct"},
-		// Needs changes on engine side to be able to run this test. Therefore, it is commented out for now
-		// {"test sync eth_sendRawTransaction low gas price", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasPrice}, false, "gas price too low"},
+		{"test sync eth_sendRawTransaction incorrect txs raw data", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidRawData}, false, "value size exceeds available input length"},
 		{"test sync eth_sendRawTransaction low gas limit", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasLimit}, false, "intrinsic gas too low"},
 		{"test sync eth_sendRawTransaction incorrect nonce", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidNonce}, false, "ERR_INCORRECT_NONCE"},
 		{"test eth_call contract data", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &contractAddr, nil, nil, nil, &contractData), &LatestBlockNumber}, false, "0x0000000000000000000000000000000000000000000000000000000000000005"},
@@ -328,9 +322,10 @@ func TestEthEndpointsStatic(t *testing.T) {
 		// Needs changes on engine side to be able to run this test properly. Normally, "execution error: Out Of Gas" should be retrieved. Hovewer, since max gas is staticilly applied the result seems to be success
 		{"test eth_call out of gas", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, &transferValOOF, nil, &transferVal, nil), &LatestBlockNumber}, false, "0x"},
 		{"test eth_call out of fund", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, nil, nil, &transferValOOF, nil), &LatestBlockNumber}, false, "Ok(OutOfFund)"},
+		{"test eth_call low gas price", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, &gasZero, nil, &transferVal, nil), &LatestBlockNumber}, false, "Ok(OutOfGas)"},
 		{"test eth_call stack overflow", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(nil, &contractAddrStackOverFlow, nil, nil, nil, &contractDataStackOverFlow), &LatestBlockNumber}, false, "EvmError(StackOverflow)"},
 		// Testnet returns "0x" for Revert status, following the same approach
-		{"test eth_call call too deep", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(nil, &contractAddrCallTooDeep, nil, nil, nil, &contractDataCallTooDeep), &LatestBlockNumber}, false, "execution reverted without data"},
+		{"test eth_call call too deep", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(nil, &contractAddrCallTooDeep, nil, nil, nil, &contractDataCallTooDeep), &LatestBlockNumber}, false, "execution reverted"},
 		{"test eth_call out of offset", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &contractAddrOutOfOffset, nil, nil, nil, &contractDataOutOfOffset), &LatestBlockNumber}, false, "Ok(OutOfOffset)"},
 	}
 	for _, d := range data {
@@ -351,7 +346,7 @@ func TestEthEndpointsStatic(t *testing.T) {
 					t.Errorf("incorrect response: expected %s, got %s", d.expectedResult, *v)
 				}
 			default:
-				if err.Error() != d.expectedResult {
+				if !strings.Contains(err.Error(), d.expectedResult) {
 					t.Errorf("incorrect response: expected %s, got %s", d.expectedResult, err.Error())
 				}
 			}

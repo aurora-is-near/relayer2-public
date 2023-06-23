@@ -77,14 +77,19 @@ func (e *EngineEth) chainId(_ context.Context) (*common.Uint256, error) {
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) GetCode(ctx context.Context, address common.Address, number *common.BN64) (*string, error) {
+func (e *EngineEth) GetCode(ctx context.Context, address common.Address, bNumOrHash *common.BlockNumberOrHash) (*string, error) {
 	return endpoint.Process(ctx, "eth_getCode", e.Endpoint, func(ctx context.Context) (*string, error) {
-		return e.getCode(ctx, address, number)
-	}, address, number)
+		return e.getCode(ctx, address, bNumOrHash)
+	}, address, bNumOrHash)
 }
 
-func (e *EngineEth) getCode(_ context.Context, address common.Address, number *common.BN64) (*string, error) {
-	resp, err := e.signer.ViewFunction(utils.AccountId, "get_code", address.Bytes(), number.Int64())
+func (e *EngineEth) getCode(ctx context.Context, address common.Address, bNumOrHash *common.BlockNumberOrHash) (*string, error) {
+	bn, err := e.blockNumberByNumberOrHash(ctx, bNumOrHash)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_code", address.Bytes(), bn.Int64())
 	if err != nil {
 		// Return "0x" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
@@ -100,14 +105,19 @@ func (e *EngineEth) getCode(_ context.Context, address common.Address, number *c
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) GetBalance(ctx context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
+func (e *EngineEth) GetBalance(ctx context.Context, address common.Address, bNumOrHash *common.BlockNumberOrHash) (*common.Uint256, error) {
 	return endpoint.Process(ctx, "eth_getBalance", e.Endpoint, func(ctx context.Context) (*common.Uint256, error) {
-		return e.getBalance(ctx, address, number)
-	}, address, number)
+		return e.getBalance(ctx, address, bNumOrHash)
+	}, address, bNumOrHash)
 }
 
-func (e *EngineEth) getBalance(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
-	resp, err := e.signer.ViewFunction(utils.AccountId, "get_balance", address.Bytes(), number.Int64())
+func (e *EngineEth) getBalance(ctx context.Context, address common.Address, bNumOrHash *common.BlockNumberOrHash) (*common.Uint256, error) {
+	bn, err := e.blockNumberByNumberOrHash(ctx, bNumOrHash)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_balance", address.Bytes(), bn.Int64())
 	if err != nil {
 		// Return "0x0" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
@@ -123,14 +133,19 @@ func (e *EngineEth) getBalance(_ context.Context, address common.Address, number
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) GetTransactionCount(ctx context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
+func (e *EngineEth) GetTransactionCount(ctx context.Context, address common.Address, bNumOrHash *common.BlockNumberOrHash) (*common.Uint256, error) {
 	return endpoint.Process(ctx, "eth_getTransactionCount", e.Endpoint, func(ctx context.Context) (*common.Uint256, error) {
-		return e.getTransactionCount(ctx, address, number)
-	}, address, number)
+		return e.getTransactionCount(ctx, address, bNumOrHash)
+	}, address, bNumOrHash)
 }
 
-func (e *EngineEth) getTransactionCount(_ context.Context, address common.Address, number *common.BN64) (*common.Uint256, error) {
-	resp, err := e.signer.ViewFunction(utils.AccountId, "get_nonce", address.Bytes(), number.Int64())
+func (e *EngineEth) getTransactionCount(ctx context.Context, address common.Address, bNumOrHash *common.BlockNumberOrHash) (*common.Uint256, error) {
+	bn, err := e.blockNumberByNumberOrHash(ctx, bNumOrHash)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_nonce", address.Bytes(), bn.Int64())
 	if err != nil {
 		// Return "0x0" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
@@ -148,19 +163,23 @@ func (e *EngineEth) getTransactionCount(_ context.Context, address common.Addres
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) GetStorageAt(ctx context.Context, address common.Address, storageSlot common.Uint256, number *common.BN64) (*string, error) {
+func (e *EngineEth) GetStorageAt(ctx context.Context, address common.Address, storageSlot common.Uint256, bNumOrHash *common.BlockNumberOrHash) (*string, error) {
 	return endpoint.Process(ctx, "eth_getStorageAt", e.Endpoint, func(ctx context.Context) (*string, error) {
-		return e.getStorageAt(ctx, address, storageSlot, number)
-	}, address, number)
+		return e.getStorageAt(ctx, address, storageSlot, bNumOrHash)
+	}, address, bNumOrHash)
 }
 
-func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, storageSlot common.Uint256, number *common.BN64) (*string, error) {
+func (e *EngineEth) getStorageAt(ctx context.Context, address common.Address, storageSlot common.Uint256, bNumOrHash *common.BlockNumberOrHash) (*string, error) {
 	argsBuf, err := formatGetStorageAtArgsForEngine(address, storageSlot)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
+	bn, err := e.blockNumberByNumberOrHash(ctx, bNumOrHash)
+	if err != nil {
+		return nil, err
+	}
 
-	resp, err := e.signer.ViewFunction(utils.AccountId, "get_storage_at", argsBuf, number.Int64())
+	resp, err := e.signer.ViewFunction(utils.AccountId, "get_storage_at", argsBuf, bn.Int64())
 	if err != nil {
 		// Return "0x" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
@@ -176,13 +195,13 @@ func (e *EngineEth) getStorageAt(_ context.Context, address common.Address, stor
 // 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
 // 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
 // 	On missing or invalid param returns error code '-32602' with custom message.
-func (e *EngineEth) Call(ctx context.Context, txs engine.TransactionForCall, number *common.BN64) (*string, error) {
+func (e *EngineEth) Call(ctx context.Context, txs engine.TransactionForCall, bNumOrHash *common.BlockNumberOrHash) (*string, error) {
 	return endpoint.Process(ctx, "eth_call", e.Endpoint, func(ctx context.Context) (*string, error) {
-		return e.call(ctx, txs, number)
-	}, txs, number)
+		return e.call(ctx, txs, bNumOrHash)
+	}, txs, bNumOrHash)
 }
 
-func (e *EngineEth) call(_ context.Context, txs engine.TransactionForCall, number *common.BN64) (*string, error) {
+func (e *EngineEth) call(ctx context.Context, txs engine.TransactionForCall, bNumOrHash *common.BlockNumberOrHash) (*string, error) {
 	err := txs.Validate()
 	if err != nil {
 		return nil, err
@@ -191,7 +210,12 @@ func (e *EngineEth) call(_ context.Context, txs engine.TransactionForCall, numbe
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
-	resp, err := e.signer.ViewFunction(utils.AccountId, "view", argsBuf, number.Int64())
+	bn, err := e.blockNumberByNumberOrHash(ctx, bNumOrHash)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := e.signer.ViewFunction(utils.AccountId, "view", argsBuf, bn.Int64())
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
@@ -231,8 +255,8 @@ func (e *EngineEth) asyncSendRawTransaction(txsBytes []byte) (*string, error) {
 	}
 	txsHash := utils.CalculateKeccak256(txsBytes)
 	e.Logger.Info().Msgf("Near txs hash is: %s, for Eth txs hash: %s", *resp, txsHash)
-	
-  return &txsHash, nil
+
+	return &txsHash, nil
 }
 
 // syncSendRawTransaction submits a raw transaction to engine synchronously
@@ -270,6 +294,26 @@ func (e *EngineEth) sendRawTransactionWithRetry(txsBytes []byte) (*string, error
 		}
 	}
 	return nil, errors.New("sendRawTransaction: maximum retries reached")
+}
+
+func (e *EngineEth) blockNumberByNumberOrHash(ctx context.Context, bNumOrHash *common.BlockNumberOrHash) (*common.BN64, error) {
+	if bNumOrHash == nil {
+		bn := common.LatestBlockNumber
+		return &bn, nil
+	}
+	if tbn, ok := bNumOrHash.Number(); ok {
+		return &tbn, nil
+	}
+	if hash, ok := bNumOrHash.Hash(); ok {
+		tbn, err := e.DbHandler.BlockHashToNumber(ctx, hash)
+		if err != nil {
+			return nil, err
+		}
+		bn := common.BN64(*tbn)
+		return &bn, nil
+	}
+
+	return nil, errors.New("invalid arguments; neither block nor hash specified")
 }
 
 // getUint256ResultFromEngineResponse gets the return value from engine and converts it to Uint256 format
