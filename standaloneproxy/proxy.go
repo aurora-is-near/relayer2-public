@@ -150,21 +150,17 @@ func (rc *rpcClient) TraceTransaction(hash common.H256) (*response.CallFrame, er
 	}
 
 	result, resultType, _, err := jsonparser.Get(res, "result")
-	if err != nil {
+	if err != nil && !errors.Is(err, jsonparser.KeyPathNotFoundError) {
 		return nil, err
 	}
 
 	switch resultType {
 	case jsonparser.NotExist:
 		rpcErr, rpcErrType, _, err := jsonparser.Get(res, "error", "message")
-		switch {
-		case err != nil:
-			return nil, err
-		case rpcErrType == jsonparser.NotExist:
+		if err != nil || rpcErrType != jsonparser.String {
 			return nil, errors.New("internal rpc error")
-		default:
-			return nil, fmt.Errorf("%s", rpcErr)
 		}
+		return nil, fmt.Errorf("%s", rpcErr)
 
 	case jsonparser.Object:
 		trace := new(response.CallFrame)
