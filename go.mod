@@ -9,8 +9,8 @@ replace github.com/aurora-is-near/relayer2-base => ../relayer2-base
 replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.2
 
 require (
-	github.com/aurora-is-near/near-api-go v0.0.13-0.20221011140300-30882c6356c4
-	github.com/aurora-is-near/relayer2-base v1.0.1-rc.1.0.20230508081015-631eafbe074c
+	github.com/aurora-is-near/near-api-go v0.0.13-0.20230718083121-2b3b0cdd7ac4
+	github.com/aurora-is-near/relayer2-base v1.0.5
 	github.com/ethereum/go-ethereum v1.10.25
 	github.com/json-iterator/go v1.1.12
 	github.com/spf13/cobra v1.6.0
