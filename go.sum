@@ -54,8 +54,8 @@ github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1 h1:Nw9J9K7CksfVBa9uCVfvf1uAIQRhrN
 github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1/go.mod h1:Li013EFlPu3crtlFQtWJAeE7VmdhSsxOpRoop1J0icw=
 github.com/aurora-is-near/near-api-go v0.0.13-0.20230718083121-2b3b0cdd7ac4 h1:CSR9l311tsTj8EgQ/jqzLod7u7V1tq3HDnRRKZrNNGY=
 github.com/aurora-is-near/near-api-go v0.0.13-0.20230718083121-2b3b0cdd7ac4/go.mod h1:u1KDIqjCl+g+Ndp8izReS5zXI05YWCgQR3iOYXhnhHI=
-github.com/aurora-is-near/relayer2-base v1.0.5 h1:5cWLKUXJh0KVlqv7GtLKmwZn3J0Kgwzft35PNSZAvAQ=
-github.com/aurora-is-near/relayer2-base v1.0.5/go.mod h1:HMQW4vlcW1/jjMy/w8kY+b+Z3VZOrNhEC+rotjXNtqs=
+github.com/aurora-is-near/relayer2-base v1.1.0-rc.1 h1:RDMyhrSTDLqctjqD/ebmh+6nbdNPuxZ0SMJMkChe7mk=
+github.com/aurora-is-near/relayer2-base v1.1.0-rc.1/go.mod h1:kvEh47ywen00njN0XWPWj2RDGa1CXDF13EjDjLiRojo=
 github.com/aurora-is-near/stream-backup v0.0.0-20221212013533-1e06e263c3f7 h1:aHMsjwM2KJ6EO9H7f1UgFD95c+d9BTpA43NQgZ6hiaM=
 github.com/aurora-is-near/stream-backup v0.0.0-20221212013533-1e06e263c3f7/go.mod h1:71KeQcNFeKIHH0WeppWnXZBfwpGo/YwLK8TtC+r+TfY=
 github.com/btcsuite/btcd v0.23.2 h1:/YOgUp25sdCnP5ho6Hl3s0E438zlX+Kak7E6TgBgoT0=
@@ -76,6 +76,8 @@ github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792/go.mod h1:ghJtE
 github.com/btcsuite/winsvc v1.0.0/go.mod h1:jsenWakMcC0zFBFurPLEAyrnc/teJEM1O46fmI40EZs=
 github.com/buger/jsonparser v1.1.1 h1:2PnMjfWD7wBILjqQbt530v576A/cAbQvEW9gGIpYMUs=
 github.com/buger/jsonparser v1.1.1/go.mod h1:6RYKKt7H4d4+iWqouImQ9R2FZql3VbhNgx27UK13J/0=
+github.com/carlmjohnson/versioninfo v0.22.4 h1:AucUHDSKmk6j7Yx3dECGUxaowGHOAN0Zx5/EBtsXn4Y=
+github.com/carlmjohnson/versioninfo v0.22.4/go.mod h1:QT9mph3wcVfISUKd0i9sZfVrPviHuSF+cUtLjm2WSf8=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0 h1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
