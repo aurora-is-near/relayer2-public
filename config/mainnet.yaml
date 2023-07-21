@@ -45,12 +45,14 @@ endpoint:
 rpcNode:
   httpHost: localhost
   httpPort: 8545
+  httpPathPrefix: "*" # allows all paths
   httpCors: 
     - "*"
   httpCompress: true
   httpTimeout: 300 # in seconds
   wsHost: localhost # Both wsHost and wsPort are mandatory to start the websocket
   wsPort: 8545 # Both wsHost and wsPort are mandatory to start the websocket
+  wsPathPrefix: "*" # allows all paths
   wsHandshakeTimeout: 10 # in seconds
   maxBatchRequests: 1000
 indexer:
