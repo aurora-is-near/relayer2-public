@@ -23,6 +23,8 @@ endpoint:
     nearNodeURL: https://archival-rpc.testnet.near.org
     signer:
     signerKey:
+    functionKeyPrefixPattern: "fk*."
+    functionKeyMapper: "CRC32" # can take values; CRC32, RoundRobin. Default CRC32
     asyncSendRawTxs: false
     minGasPrice: 0
     minGasLimit: 21000

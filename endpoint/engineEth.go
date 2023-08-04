@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/aurora-is-near/near-api-go"
@@ -19,12 +21,42 @@ import (
 var (
 	beforeGenesisError   = "DB Not Found Error"
 	beforeAuroraError    = "does not exist while viewing"
-	tooManyrequestsError = "429"
+	tooManyRequestsError = "429"
 )
+
+type SenderKeyMapper interface {
+	Map(sender string, totalNumKeys int) (keyIndex int)
+}
+
+// CRC32Mapper is a signer to key mapper implementation that uses crc32 hash to consistently distributes signers to keys.
+// This ensures that same signers are mapped to same key
+type CRC32Mapper struct{}
+
+func (m CRC32Mapper) Map(sender string, totalNumKeys int) int {
+	idx := crc32.ChecksumIEEE([]byte(sender)) % uint32(totalNumKeys)
+	return int(idx)
+}
+
+// RoundRobinMapper is a signer to key mapper implementation that equally distributes signers to keys
+type RoundRobinMapper struct {
+	offset uint32
+}
+
+func (m RoundRobinMapper) Map(sender string, totalNumKeys int) int {
+	return m.rrMap(totalNumKeys)
+}
+
+func (m RoundRobinMapper) rrMap(totalNumKeys int) int {
+	offset := atomic.AddUint32(&m.offset, 1) - 1
+	idx := offset % uint32(totalNumKeys)
+	return int(idx)
+}
 
 type EngineEth struct {
 	*endpoint.Endpoint
 	signer *near.Account
+	keys   []string
+	mapper SenderKeyMapper
 }
 
 func NewEngineEth(ep *endpoint.Endpoint) *EngineEth {
@@ -34,30 +66,42 @@ func NewEngineEth(ep *endpoint.Endpoint) *EngineEth {
 
 	// Establish engine communication and auth the near account
 	nearCfg := &near.Config{
-		NetworkID: ep.Config.EngineConfig.NearNetworkID,
-		NodeURL:   ep.Config.EngineConfig.NearNodeURL,
+		NetworkID:                ep.Config.EngineConfig.NearNetworkID,
+		NodeURL:                  ep.Config.EngineConfig.NearNodeURL,
+		FunctionKeyPrefixPattern: ep.Config.EngineConfig.FunctionKeyPrefixPattern,
 	}
 	if ep.Config.EngineConfig.SignerKey != "" {
 		nearCfg.KeyPath = ep.Config.EngineConfig.SignerKey
 	}
-	nearcon := near.NewConnection(nearCfg.NodeURL)
-	nearaccount, err := near.LoadAccount(nearcon, nearCfg, ep.Config.EngineConfig.Signer)
+	nearConn := near.NewConnection(nearCfg.NodeURL)
+	nearAccount, err := near.LoadAccount(nearConn, nearCfg, ep.Config.EngineConfig.Signer)
 	if err != nil {
 		ep.Logger.Panic().Err(err).Msg("failed to load Near account")
 	}
 
+	var mapper SenderKeyMapper
+	switch ep.Config.EngineConfig.FunctionKeyMapper {
+	case "CRC32":
+		mapper = CRC32Mapper{}
+	case "RoundRobin":
+		mapper = RoundRobinMapper{}
+	}
+
 	eEth := &EngineEth{
 		Endpoint: ep,
-		signer:   nearaccount,
+		signer:   nearAccount,
+		keys:     nearAccount.GetVerifiedAccessKeys(),
+		mapper:   mapper,
 	}
+
 	return eEth
 }
 
 // ChainId returns the chain id of the current network
 //
-// 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
-// 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
-// 	On any param returns error code '-32602' with custom message.
+//	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
+//	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
+//	On any param returns error code '-32602' with custom message.
 func (e *EngineEth) ChainId(ctx context.Context) (*common.Uint256, error) {
 	return endpoint.Process(ctx, "eth_chainId", e.Endpoint, func(ctx context.Context) (*common.Uint256, error) {
 		return e.chainId(ctx)
@@ -74,9 +118,9 @@ func (e *EngineEth) chainId(_ context.Context) (*common.Uint256, error) {
 
 // GetCode returns the compiled smart contract code, if any, at a given address
 //
-// 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
-// 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
-// 	On missing or invalid param returns error code '-32602' with custom message.
+//	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
+//	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
+//	On missing or invalid param returns error code '-32602' with custom message.
 func (e *EngineEth) GetCode(ctx context.Context, address common.Address, bNumOrHash *common.BlockNumberOrHash) (*string, error) {
 	return endpoint.Process(ctx, "eth_getCode", e.Endpoint, func(ctx context.Context) (*string, error) {
 		return e.getCode(ctx, address, bNumOrHash)
@@ -102,9 +146,9 @@ func (e *EngineEth) getCode(ctx context.Context, address common.Address, bNumOrH
 
 // GetBalance returns the balance of the account of given address
 //
-// 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
-// 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
-// 	On missing or invalid param returns error code '-32602' with custom message.
+//	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
+//	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
+//	On missing or invalid param returns error code '-32602' with custom message.
 func (e *EngineEth) GetBalance(ctx context.Context, address common.Address, bNumOrHash *common.BlockNumberOrHash) (*common.Uint256, error) {
 	return endpoint.Process(ctx, "eth_getBalance", e.Endpoint, func(ctx context.Context) (*common.Uint256, error) {
 		return e.getBalance(ctx, address, bNumOrHash)
@@ -130,9 +174,9 @@ func (e *EngineEth) getBalance(ctx context.Context, address common.Address, bNum
 
 // GetTransactionCount returns the number of transactions sent from an address
 //
-// 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
-// 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
-// 	On missing or invalid param returns error code '-32602' with custom message.
+//	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
+//	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
+//	On missing or invalid param returns error code '-32602' with custom message.
 func (e *EngineEth) GetTransactionCount(ctx context.Context, address common.Address, bNumOrHash *common.BlockNumberOrHash) (*common.Uint256, error) {
 	return endpoint.Process(ctx, "eth_getTransactionCount", e.Endpoint, func(ctx context.Context) (*common.Uint256, error) {
 		return e.getTransactionCount(ctx, address, bNumOrHash)
@@ -150,7 +194,7 @@ func (e *EngineEth) getTransactionCount(ctx context.Context, address common.Addr
 		// Return "0x0" for the blocks before Aurora account or before Genesis
 		if strings.Contains(err.Error(), beforeAuroraError) || strings.Contains(err.Error(), beforeGenesisError) {
 			return utils.Constants.ZeroUint256(), nil
-		} else if strings.Contains(err.Error(), tooManyrequestsError) {
+		} else if strings.Contains(err.Error(), tooManyRequestsError) {
 			return nil, errors.New("engine error 429, too many requests received")
 		}
 		return nil, &errs.GenericError{Err: err}
@@ -160,9 +204,9 @@ func (e *EngineEth) getTransactionCount(ctx context.Context, address common.Addr
 
 // GetStorageAt returns the value from a storage position at a given address
 //
-// 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
-// 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
-// 	On missing or invalid param returns error code '-32602' with custom message.
+//	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
+//	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
+//	On missing or invalid param returns error code '-32602' with custom message.
 func (e *EngineEth) GetStorageAt(ctx context.Context, address common.Address, storageSlot common.Uint256, bNumOrHash *common.BlockNumberOrHash) (*string, error) {
 	return endpoint.Process(ctx, "eth_getStorageAt", e.Endpoint, func(ctx context.Context) (*string, error) {
 		return e.getStorageAt(ctx, address, storageSlot, bNumOrHash)
@@ -192,9 +236,9 @@ func (e *EngineEth) getStorageAt(ctx context.Context, address common.Address, st
 
 // Call executes a new message call immediately without creating a transaction on the blockchain
 //
-// 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
-// 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
-// 	On missing or invalid param returns error code '-32602' with custom message.
+//	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
+//	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
+//	On missing or invalid param returns error code '-32602' with custom message.
 func (e *EngineEth) Call(ctx context.Context, txs engine.TransactionForCall, bNumOrHash *common.BlockNumberOrHash) (*string, error) {
 	return endpoint.Process(ctx, "eth_call", e.Endpoint, func(ctx context.Context) (*string, error) {
 		return e.call(ctx, txs, bNumOrHash)
@@ -224,9 +268,9 @@ func (e *EngineEth) call(ctx context.Context, txs engine.TransactionForCall, bNu
 
 // SendRawTransaction submits a raw transaction to engine either asynchronously or synchronously based on the configuration
 //
-// 	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
-// 	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
-// 	On missing or invalid param returns error code '-32602' with custom message.
+//	On failure to access engine or format error on the response, returns error code '-32000' with custom message.
+//	If API is disabled, returns error code '-32601' with message 'the method does not exist/is not available'.
+//	On missing or invalid param returns error code '-32602' with custom message.
 func (e *EngineEth) SendRawTransaction(ctx context.Context, txs common.DataVec) (*string, error) {
 	return endpoint.Process(ctx, "eth_sendRawTransaction", e.Endpoint, func(ctx context.Context) (*string, error) {
 		return e.sendRawTransaction(ctx, txs)
@@ -234,21 +278,29 @@ func (e *EngineEth) SendRawTransaction(ctx context.Context, txs common.DataVec) 
 }
 
 func (e *EngineEth) sendRawTransaction(_ context.Context, txs common.DataVec) (*string, error) {
+
+	// check transaction data and return error if any issues (like low gas price or gas limit)
+	sender, err := validateRawTransaction(txs.Bytes(), e.Config.EngineConfig)
+	if err != nil {
+		return nil, &errs.InvalidParamsError{Message: err.Error()}
+	}
+
+	key := e.keys[e.mapper.Map(sender.Hex(), len(e.keys))]
+	e.Endpoint.Logger.Debug().Msgf("sender: [%s], key: [%s]", sender.Hex(), key)
+
 	// Call either async or sync version of sendRawTransaction according to the configuration parameter
 	if e.Config.EngineConfig.AsyncSendRawTxs {
-		return e.asyncSendRawTransaction(txs.Bytes())
+		return e.asyncSendRawTransactionWithPublicKey(txs.Bytes(), key)
 	} else {
-		return e.syncSendRawTransaction(txs.Bytes())
+		return e.syncSendRawTransactionWithPublicKey(txs.Bytes(), key)
 	}
 }
 
 // asyncSendRawTransaction submits a raw transaction to engine asynchronously
+//
+// Deprecated: Use asyncSendRawTransactionWithPublicKey instead
 func (e *EngineEth) asyncSendRawTransaction(txsBytes []byte) (*string, error) {
-	// check transaction data and return error if any issues (like low gas price or gas limit)
-	err := validateRawTransaction(txsBytes, e.Config.EngineConfig)
-	if err != nil {
-		return nil, &errs.InvalidParamsError{Message: err.Error()}
-	}
+
 	resp, err := e.sendRawTransactionWithRetry(txsBytes)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
@@ -259,17 +311,41 @@ func (e *EngineEth) asyncSendRawTransaction(txsBytes []byte) (*string, error) {
 	return &txsHash, nil
 }
 
-// syncSendRawTransaction submits a raw transaction to engine synchronously
-func (e *EngineEth) syncSendRawTransaction(txsBytes []byte) (*string, error) {
-	// check transaction data and return error if any issues (like low gas price or gas limit)
-	err := validateRawTransaction(txsBytes, e.Config.EngineConfig)
+// asyncSendRawTransactionWithPublicKey submits a raw transaction to engine asynchronously. Transaction is signed with the key pair defined
+// by the publicKey arg
+func (e *EngineEth) asyncSendRawTransactionWithPublicKey(txsBytes []byte, publicKey string) (*string, error) {
+
+	resp, err := e.sendRawTransactionWithRetryWithPublicKey(txsBytes, publicKey)
 	if err != nil {
-		return nil, &errs.InvalidParamsError{Message: err.Error()}
+		return nil, &errs.GenericError{Err: err}
 	}
+	txsHash := utils.CalculateKeccak256(txsBytes)
+	e.Logger.Info().Msgf("Near txs hash is: %s, for Eth txs hash: %s", *resp, txsHash)
+
+	return &txsHash, nil
+}
+
+// syncSendRawTransaction submits a raw transaction to engine synchronously
+//
+// Deprecated: Use syncSendRawTransactionWithPublicKey instead
+func (e *EngineEth) syncSendRawTransaction(txsBytes []byte) (*string, error) {
 
 	txsHash := utils.CalculateKeccak256(txsBytes)
 	amount := e.Config.EngineConfig.DepositForNearTxsCall
 	resp, err := e.signer.FunctionCall(utils.AccountId, "submit", txsBytes, e.Config.EngineConfig.GasForNearTxsCall, *amount)
+	if err != nil {
+		return nil, &errs.GenericError{Err: err}
+	}
+	return getTxsResultFromEngineResponse(resp, txsHash)
+}
+
+// syncSendRawTransactionWithPublicKey submits a raw transaction to engine synchronously. Transaction is signed with the key pair defined
+// by the publicKey arg
+func (e *EngineEth) syncSendRawTransactionWithPublicKey(txsBytes []byte, publicKey string) (*string, error) {
+
+	txsHash := utils.CalculateKeccak256(txsBytes)
+	amount := e.Config.EngineConfig.DepositForNearTxsCall
+	resp, err := e.signer.FunctionCallWithMultiActionAndKey(utils.AccountId, "submit", publicKey, [][]byte{txsBytes}, e.Config.EngineConfig.GasForNearTxsCall, *amount)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
 	}
@@ -285,6 +361,26 @@ func (e *EngineEth) sendRawTransactionWithRetry(txsBytes []byte) (*string, error
 
 	for i := 0; i < retryNumber; i++ {
 		resp, err := e.signer.FunctionCallAsync(utils.AccountId, "submit", txsBytes, gas, *amount)
+		if err == nil {
+			return &resp, nil
+		}
+		if i < retryNumber-1 {
+			e.Logger.Error().Msgf("sendRawTxs error on iteration %d: %s", i, err.Error())
+			time.Sleep(time.Duration(waitTimeMs) * time.Millisecond)
+		}
+	}
+	return nil, errors.New("sendRawTransaction: maximum retries reached")
+}
+
+// sendRawTransactionWithRetryWithPublicKey send the Txs with a constant configurable retry count and duration in case of error
+func (e *EngineEth) sendRawTransactionWithRetryWithPublicKey(txsBytes []byte, publicKey string) (*string, error) {
+	amount := e.Config.EngineConfig.DepositForNearTxsCall
+	gas := e.Config.EngineConfig.GasForNearTxsCall
+	waitTimeMs := e.Config.EngineConfig.RetryWaitTimeMsForNearTxsCall
+	retryNumber := e.Config.EngineConfig.RetryNumberForNearTxsCall
+
+	for i := 0; i < retryNumber; i++ {
+		resp, err := e.signer.FunctionCallAsyncWithMultiActionAndKey(utils.AccountId, "submit", publicKey, [][]byte{txsBytes}, gas, *amount)
 		if err == nil {
 			return &resp, nil
 		}
@@ -378,25 +474,28 @@ func getTxsResultFromEngineResponse(respArg interface{}, txsHash string) (*strin
 }
 
 // validateRawTransaction validates the raw transaction by checking GasPrice and Gas Limit
-func validateRawTransaction(rawRxsBytes []byte, cfg endpoint.EngineConfig) error {
+func validateRawTransaction(rawRxsBytes []byte, cfg endpoint.EngineConfig) (*common.Address, error) {
 	txsObj, err := parseTransactionFromBinary(rawRxsBytes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// check if provided sender address is valid
-	if _, err := extractTransactionSender(txsObj); err != nil {
-		return fmt.Errorf("can't extract transaction sender: %v", err)
+	sender, err := extractTransactionSender(txsObj)
+	if err != nil {
+		return nil, fmt.Errorf("can't extract transaction sender: %v", err)
 	}
+
 	// check if provided gas price is bigger than min gas price limit
 	if txsObj.GasPrice().Cmp(cfg.MinGasPrice) < 0 {
-		return errors.New("gas price too low")
+		return nil, errors.New("gas price too low")
 	}
+
 	// check if provided gas limit is bigger than min gas limit
 	if txsObj.Gas() < cfg.MinGasLimit {
-		return errors.New("intrinsic gas too low")
+		return nil, errors.New("intrinsic gas too low")
 	}
-	return nil
+	return sender, nil
 }
 
 // parseTransactionFromBinary decodes the sendRawTransaction data to a go-ethereum transaction structure
@@ -409,7 +508,7 @@ func parseTransactionFromBinary(txBinary []byte) (*gethtypes.Transaction, error)
 	return &tx, nil
 }
 
-// extractTransactionSender decodes the sendRawTransaction sender data and returns if the operation failse
+// extractTransactionSender decodes the sendRawTransaction sender data and returns if the operation false
 func extractTransactionSender(tx *gethtypes.Transaction) (*common.Address, error) {
 	addr, err := gethtypes.Sender(gethtypes.LatestSignerForChainID(tx.ChainId()), tx)
 	if err != nil {
