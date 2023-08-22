@@ -61,13 +61,14 @@ func main() {
 		netProcessor := commonEndpoint.NewNetProcessorAware(netEndpoint)
 		web3Endpoint := commonEndpoint.NewWeb3(baseEndpoint)
 		web3Processor := commonEndpoint.NewWeb3ProcessorAware(web3Endpoint)
-		parityEnpoint := commonEndpoint.NewParity(baseEndpoint)
-		parityProcessor := commonEndpoint.NewParityProcessorAware(parityEnpoint)
-		debugEnpoint := commonEndpoint.NewDebug(baseEndpoint)
-		debugProcessor := commonEndpoint.NewDebugProcessorAware(debugEnpoint)
+		parityEndpoint := commonEndpoint.NewParity(baseEndpoint)
+		parityProcessor := commonEndpoint.NewParityProcessorAware(parityEndpoint)
+		debugEndpoint := commonEndpoint.NewDebug(baseEndpoint)
+		debugProcessor := commonEndpoint.NewDebugProcessorAware(debugEndpoint)
 		eventsEndpoint := endpoint.NewEventsEth(baseEndpoint, rpcNode.Broker)
 		engineEth := endpoint.NewEngineEth(baseEndpoint)
 		engineNet := endpoint.NewEngineNet(engineEth)
+		defer engineEth.Close()
 
 		// use the endpoint services to json-rpc server
 		rpcNode.WithMiddleware(middleware.FilterIP())
