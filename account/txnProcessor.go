@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	qCap            = 1000
-	timeoutSeconds  = 30
-	timeoutSeconds2 = 2 * timeoutSeconds
+	qCap                          = 1000
+	timeoutSeconds                = 30
+	timeoutSeconds2               = 2 * timeoutSeconds
+	minNonceUpdateIntervalSeconds = 5
 )
 
 type TxnProcessor struct {
@@ -25,13 +26,18 @@ type TxnProcessor struct {
 	config         *endpoint.EngineConfig
 	logger         *log.Logger
 	account        *near.Account
-	ethNonceCache  map[string]uint64
-	nearNonceCache map[string]uint64
+	ethNonceCache  map[string]*nonceCache
+	nearNonceCache map[string]*nonceCache
 	keys           []string
 	retryMutex     []*sync.Mutex
 	ordered        []*TxnQ[TxnReq]
 	unordered      []*TxnQ[TxnReq]
 	circuitBreaker []bool
+}
+
+type nonceCache struct {
+	nonce      uint64
+	updateTime time.Time
 }
 
 // NewTxnProcessor creates and starts transaction processor which is responsible for sending received Eth transaction to
@@ -52,8 +58,8 @@ func NewTxnProcessor(config *endpoint.EngineConfig, account *near.Account) (*Txn
 		account:        account,
 		logger:         log.Log(),
 		keys:           account.GetVerifiedAccessKeys(),
-		ethNonceCache:  make(map[string]uint64),
-		nearNonceCache: make(map[string]uint64),
+		ethNonceCache:  make(map[string]*nonceCache),
+		nearNonceCache: make(map[string]*nonceCache),
 		ordered:        make([]*TxnQ[TxnReq], 0),
 		unordered:      make([]*TxnQ[TxnReq], 0),
 		retryMutex:     make([]*sync.Mutex, 0),
@@ -175,17 +181,20 @@ func (tp *TxnProcessor) sort(req *TxnReq) {
 		return
 	}
 
-	if nonce, ok := tp.ethNonceCache[req.sender.Hex()]; !ok {
+	if nc, ok := tp.ethNonceCache[req.sender.Hex()]; !ok {
 		// if cache miss, then we assume the first received nonce is correct
-		tp.ethNonceCache[req.sender.Hex()] = req.nonce
+		tp.ethNonceCache[req.sender.Hex()] = &nonceCache{
+			nonce:      req.nonce,
+			updateTime: time.Now().Add(time.Second * time.Duration(-minNonceUpdateIntervalSeconds)),
+		}
 		tp.ordered[req.processorIndex].Enqueue(req)
 	} else {
 		// if cache hit, compare with request's nonce
-		if nonce == req.nonce {
+		if nc.nonce == req.nonce {
 			// nonce match, push request to ordered Q
-			tp.ethNonceCache[req.sender.Hex()] = nonce + 1
+			nc.nonce += 1
 			tp.ordered[req.processorIndex].Enqueue(req)
-		} else if nonce > req.nonce {
+		} else if nc.nonce > req.nonce {
 			// nonce is low, discard the request (nothing to do)
 			req.RespondWithStatus(txnStatus_EthNonceTooLow)
 		} else {
@@ -267,7 +276,7 @@ func (tp *TxnProcessor) eval(req *TxnReq, resp *TxnResp) (retry bool) {
 
 	// after cache update actual nonce can be higher than request nonce, in this case there is no reason to retry this
 	// request just send response with actual error evaluated above
-	if tp.ethNonceCache[req.sender.Hex()] > req.nonce {
+	if tp.ethNonceCache[req.sender.Hex()].nonce > req.nonce {
 		return false
 	}
 
@@ -283,31 +292,47 @@ func (tp *TxnProcessor) eval(req *TxnReq, resp *TxnResp) (retry bool) {
 //
 // Note that, this function is not thread-safe and successive calls increment the cache value so this
 // function is not suitable for view operations.
-func (tp *TxnProcessor) nextNearNonce(key string) (nonce uint64, err error) {
+func (tp *TxnProcessor) nextNearNonce(key string) (uint64, error) {
 
 	var ok bool
-	if nonce, ok = tp.nearNonceCache[key]; !ok {
-		nonce, err = tp.account.ViewNonce(key)
+	var nc *nonceCache
+	if nc, ok = tp.nearNonceCache[key]; !ok {
+		nonce, err := tp.account.ViewNonce(key)
 		if err != nil {
 			return 0, err
 		}
+		nc = &nonceCache{
+			nonce:      nonce + 1,
+			updateTime: time.Now().Add(time.Second * (-minNonceUpdateIntervalSeconds)),
+		}
+		tp.nearNonceCache[key] = nc
+	} else {
+		nc.nonce++
 	}
-	nonce++
-	tp.nearNonceCache[key] = nonce
-	return nonce, nil
+
+	return nc.nonce, nil
 }
 
 func (tp *TxnProcessor) updateNearNonceCache(key string) error {
 
+	if time.Now().Before(tp.nearNonceCache[key].updateTime.Add(minNonceUpdateIntervalSeconds * time.Second)) {
+		return nil
+	}
+
 	nonce, err := tp.account.ViewNonce(key)
 	if err == nil {
-		tp.nearNonceCache[key] = nonce
+		tp.nearNonceCache[key].nonce = nonce
+		tp.nearNonceCache[key].updateTime = time.Now()
 	}
 	tp.logger.Info().Msgf("near nonce update - key[%s], new nonce: [%d]", key, nonce)
 	return err
 }
 
 func (tp *TxnProcessor) updateEthNonceCache(address common.Address) error {
+
+	if time.Now().Before(tp.ethNonceCache[address.Hex()].updateTime.Add(minNonceUpdateIntervalSeconds * time.Second)) {
+		return nil
+	}
 
 	lbn := common.LatestBlockNumber
 	bn := &lbn
@@ -327,7 +352,8 @@ func (tp *TxnProcessor) updateEthNonceCache(address common.Address) error {
 		return err
 	}
 
-	tp.ethNonceCache[address.Hex()] = n.Uint64()
+	tp.ethNonceCache[address.Hex()].nonce = n.Uint64()
+	tp.ethNonceCache[address.Hex()].updateTime = time.Now()
 	tp.logger.Info().Msgf("eth nonce update - address[%s], new nonce: [%d]", address.Hex(), n.Uint64())
 	return nil
 }
