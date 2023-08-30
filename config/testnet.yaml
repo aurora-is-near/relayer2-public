@@ -23,6 +23,8 @@ endpoint:
     nearNodeURL: https://archival-rpc.testnet.near.org
     signer:
     signerKey:
+    functionKeyPrefixPattern: "fk*."
+    functionKeyMapper: "CRC32" # can take values; CRC32, RoundRobin. Default CRC32
     asyncSendRawTxs: false
     minGasPrice: 0
     minGasLimit: 21000
@@ -43,25 +45,18 @@ endpoint:
   disabledEndpoints:
     -
 rpcNode:
-  geth:
-    HTTPHost: localhost
-    HTTPPort: 8545
-    HTTPCors: 
-      - "*"
-    HTTPVirtualHosts: 
-      - "*"
-    HTTPModules:
-      - "net"
-      - "web3"
-      - "eth"
-      - "parity"
-    WSHost: localhost
-    WSPort: 8545
-    WSModules:
-      - "net"
-      - "web3"
-      - "eth"
-      - "parity"
+  httpHost: localhost
+  httpPort: 8545
+  httpPathPrefix: "*" # allows all paths
+  httpCors: 
+    - "*"
+  httpCompress: true
+  httpTimeout: 300 # in seconds
+  wsHost: localhost # Both wsHost and wsPort are mandatory to start the websocket RPC server
+  wsPort: 8545 # Both wsHost and wsPort are mandatory to start the websocket RPC server
+  wsPathPrefix: "*" # allows all paths
+  wsHandshakeTimeout: 10 # in seconds
+  maxBatchRequests: 1000
 indexer:
   sourceFolder: /tmp/relayer/json/
   subFolderBatchSize: 10000   # should match with Aurora refiner batch size, see https://github.com/aurora-is-near/borealis-engine-lib

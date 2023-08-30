@@ -14,16 +14,15 @@ import (
 	"github.com/aurora-is-near/relayer2-base/indexer/prehistory"
 	"github.com/aurora-is-near/relayer2-base/indexer/tar"
 	"github.com/aurora-is-near/relayer2-base/log"
-	goEthereum "github.com/aurora-is-near/relayer2-base/rpcnode/github-ethereum-go-ethereum"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
+	"github.com/aurora-is-near/relayer2-base/rpc/node"
 	"github.com/aurora-is-near/relayer2-public/endpoint"
 	"github.com/aurora-is-near/relayer2-public/indexer"
 	"github.com/aurora-is-near/relayer2-public/middleware"
 	"github.com/aurora-is-near/relayer2-public/standaloneproxy"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func main() {
@@ -46,8 +45,13 @@ func main() {
 		}
 		defer handler.Close()
 
-		baseEndpoint := commonEndpoint.New(handler)
+		// create json-rpc node
+		rpcNode, err := node.New()
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to create json-rpc server")
+		}
 
+		baseEndpoint := commonEndpoint.New(handler)
 		// order of processors are important
 		baseEndpoint.WithProcessor(processor.NewEnableDisable())
 		if p, err := standaloneproxy.New(); err == nil {
@@ -56,76 +60,60 @@ func main() {
 		} else {
 			logger.Err(err).Msg("failed to set up standalone proxy")
 		}
-		baseEndpoint.WithProcessor(processor.NewProxy())
 
 		ethEndpoint := commonEndpoint.NewEth(baseEndpoint)
+		ethProcessor := commonEndpoint.NewEthProcessorAware(ethEndpoint)
 		netEndpoint := commonEndpoint.NewNet(baseEndpoint)
+		netProcessor := commonEndpoint.NewNetProcessorAware(netEndpoint)
 		web3Endpoint := commonEndpoint.NewWeb3(baseEndpoint)
+		web3Processor := commonEndpoint.NewWeb3ProcessorAware(web3Endpoint)
 		parityEnpoint := commonEndpoint.NewParity(baseEndpoint)
+		parityProcessor := commonEndpoint.NewParityProcessorAware(parityEnpoint)
 		debugEnpoint := commonEndpoint.NewDebug(baseEndpoint)
-
-		rpcNode, err := goEthereum.New()
-		if err != nil {
-			logger.Fatal().Err(err).Msg("failed to create json-rpc server")
-		}
-
-		var rpcAPIs []rpc.API
-		rpcAPIs = append(rpcAPIs, rpc.API{
-			Namespace: "eth",
-			Version:   "1.0",
-			Service:   commonEndpoint.NewEthProcessorAware(ethEndpoint),
-		})
-		rpcAPIs = append(rpcAPIs, rpc.API{
-			Namespace: "net",
-			Version:   "1.0",
-			Service:   commonEndpoint.NewNetProcessorAware(netEndpoint),
-		})
-		rpcAPIs = append(rpcAPIs, rpc.API{
-			Namespace: "web3",
-			Version:   "1.0",
-			Service:   commonEndpoint.NewWeb3ProcessorAware(web3Endpoint),
-		})
-		rpcAPIs = append(rpcAPIs, rpc.API{
-			Namespace: "parity",
-			Version:   "1.0",
-			Service:   commonEndpoint.NewParityProcessorAware(parityEnpoint),
-		})
-		rpcAPIs = append(rpcAPIs, rpc.API{
-			Namespace: "debug",
-			Version:   "1.0",
-			Service:   commonEndpoint.NewDebugProcessorAware(debugEnpoint),
-		})
-
-		eventsEndpoint := endpoint.NewEventsForGoEth(baseEndpoint, rpcNode.Broker)
-		rpcAPIs = append(rpcAPIs, rpc.API{
-			Namespace: "eth",
-			Version:   "1.0",
-			Service:   eventsEndpoint,
-		})
-
+		debugProcessor := commonEndpoint.NewDebugProcessorAware(debugEnpoint)
+		eventsEndpoint := endpoint.NewEventsEth(baseEndpoint, rpcNode.Broker)
 		engineEth := endpoint.NewEngineEth(baseEndpoint)
-		rpcAPIs = append(rpcAPIs, rpc.API{
-			Namespace: "eth",
-			Version:   "1.0",
-			Service:   engineEth,
-		})
+		engineNet := endpoint.NewEngineNet(engineEth)
 
-		rpcAPIs = append(rpcAPIs, rpc.API{
-			Namespace: "net",
-			Version:   "1.0",
-			Service:   endpoint.NewEngineNet(engineEth),
-		})
+		// use the endpoint services to json-rpc server
+		rpcNode.WithMiddleware(middleware.FilterIP())
+		rpcNode.WithMiddleware(middleware.Proxy(baseEndpoint))
 
-		rpcNode.RegisterAPIs(rpcAPIs)
-
-		rpcNode.WithMiddleware("filterIP", "/", middleware.FilterIP)
-
-		err = rpcNode.Start()
+		// register endpoints and events to json-rpc server
+		err = rpcNode.RegisterEndpoints("eth", ethProcessor)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("failed to start json-rpc server")
+			logger.Fatal().Err(err).Msg("failed to register `eth` endpoints")
 		}
-		// Stop geth's p2p server
-		rpcNode.Server().Stop()
+		err = rpcNode.RegisterEndpoints("net", netProcessor)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to register `net` endpoints")
+		}
+		err = rpcNode.RegisterEndpoints("web3", web3Processor)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to register `web3` endpoints")
+		}
+		err = rpcNode.RegisterEndpoints("parity", parityProcessor)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to register `parity` endpoints")
+		}
+		err = rpcNode.RegisterEndpoints("debug", debugProcessor)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to register `debug` endpoints")
+		}
+		err = rpcNode.RegisterEndpoints("eth", engineEth)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to register `eth` endpoints for engine")
+		}
+		err = rpcNode.RegisterEndpoints("net", engineNet)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to register `net` endpoints for engine")
+		}
+
+		err = rpcNode.RegisterEvents("eth", eventsEndpoint)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to register `eth` events")
+		}
+		rpcNode.Start()
 		defer rpcNode.Close()
 
 		var tarIndexer *tar.Indexer
@@ -162,7 +150,6 @@ func main() {
 		// Set the handlers for components that needs to updated after config changes
 		viper.OnConfigChange(func(e fsnotify.Event) {
 			logger.HandleConfigChange()
-			rpcNode.HandleConfigChange()
 			baseEndpoint.HandleConfigChange()
 		})
 

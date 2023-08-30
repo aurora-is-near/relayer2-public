@@ -85,7 +85,7 @@ for detailed explanation and flags of each command see help
 | db.badger.core.scanRangeThreshold             | BADGER_CORE_SCANRANGETHRESHOLD                          | `2000`                                       | ❌              | max allowed block range for log requests                                                                                                            |
 | db.badger.core.maxScanIterators               | BADGER_CORE_MAXSCANITERATORS                            | `10000`                                      | ❌              | max logs returned if the scanRangeThreshold exceeded                                                                                                |
 | db.badger.core.filterTtlMinutes               | BADGER_CORE_FILTERTTLMINUTES                            | `15`                                         | ❌              | retention time for stored filters (not used)                                                                                                        |
-| db.badger.core.options                        |                                                         |                                              |                 | see [BadgerDB] for more options                                                                                                                     |
+| db.badger.core.options                        |                                                         |                                              |                | see [BadgerDB] for more options                                                                                                                     |
 | db.badger.core.options.Dir                    | BADGER_CORE_OPTIONS_DIR                                 | `/tmp/relayer/data`                          | ❌              | see [BadgerDB] for details                                                                                                                          |
 | db.badger.core.options.ValueDir               | BADGER_CORE_OPTIONS_VALUEDIR                            | `/tmp/relayer/data`                          | ❌              | see [BadgerDB] for details                                                                                                                          |
 | db.badger.core.options.InMemory               | BADGER_CORE_OPTIONS_INMEMORY                            | `false`                                      | ❌              | see [BadgerDB] for details                                                                                                                          |
@@ -96,6 +96,8 @@ for detailed explanation and flags of each command see help
 | endpoint.engine.nearNodeURL                   | ENDPOINT_ENGINE_NEARNODEURL                             | user should specify :heavy_exclamation_mark: | ❌              | URL of a Near Node to communicate                                                                                                                   |
 | endpoint.engine.signer                        | ENDPOINT_ENGINE_SIGNER                                  | user should specify :heavy_exclamation_mark: | ❌              | to be able to communicate with Near Node, user must have a Near account                                                                             |
 | endpoint.engine.signerKey                     | ENDPOINT_ENGINE_SIGNERKEY                               | user should specify :heavy_exclamation_mark: | ❌              | path to JSON file containing the Near Credentials. To be able to communicate with Near Node, user must have a Near signer key associated to account |
+| endpoint.engine.functionKeyPrefixPattern      | ENDPOINT_ENGINE_FUNCTIONKEYPREFIXPATTERN                | `fk*.`                                       | ❌              | prefix pattern to search for key pair files of Function Call Keys                                                                                   |
+| endpoint.engine.functionKeyMapper             | ENDPOINT_ENGINE_FUNCTIONKEYMAPPER                       | `CRC32`                                      | ❌              | hashing algorithm used to map Eth senders to Function Call Keys                                                                                     |
 | endpoint.engine.asyncSendRawTxs               | ENDPOINT_ENGINE_ASYNCSENDRAWTXS                         | `true`                                       | ❌              | if true, transaction calls to Near Node are made in async. fashion                                                                                  |
 | endpoint.engine.minGasPrice                   | ENDPOINT_ENGINE_MINGASPRICE                             | `0`                                          | ❌              |                                                                                                                                                     |
 | endpoint.engine.minGasLimit                   | ENDPOINT_ENGINE_MINGASLIMIT                             | `21000`                                      | ❌              |                                                                                                                                                     |
@@ -110,13 +112,17 @@ for detailed explanation and flags of each command see help
 | endpoint.eth.proxyEndpoints.url               | ENDPOINT_ETH_PROXYENDPOINTS_URL                         | `https://testnet.aurora.dev:443`             | ❌              |                                                                                                                                                     |
 | endpoint.eth.proxyEndpoints.endpoints         | ENDPOINT_ETH_PROXYENDPOINTS_ENDPOINTS                   | empty list                                   | ✅              | e.g.: eth_estimateGas, debug_traceTransaction                                                                                                       |
 | endpoint.eth.proxyEndpoints.disabledEndpoints | ENDPOINT_ETH_DISABLEDENDPOINTS                          | empty list                                   | ✅              | e.g.: debug_traceTransaction                                                                                                                        |
-| rpcNode.geth.HTTPHost                         | RPCNODE_GETH_HTTPHOST                                   | `localhost`                                  | ❌              |                                                                                                                                                     |
-| rpcNode.geth.HTTPPort                         | RPCNODE_GETH_HTTPPORT                                   | `8545`                                       | ❌              |                                                                                                                                                     |
-| rpcNode.geth.HTTPVirtualHosts                 | RPCNODE_GETH_HTTPVIRTUALHOSTS                           | `["localhost"]`                              | ❌              |                                                                                                                                                     |
-| rpcNode.geth.HTTPModules                      | RPCNODE_GETH_HTTPMODULES                                | `["net", "web3", "eth", "parity"]`           | ❌              |                                                                                                                                                     |
-| rpcNode.geth.WSHost                           | RPCNODE_GETH_WSHOST                                     | `localhost`                                  | ❌              |                                                                                                                                                     |
-| rpcNode.geth.WSPort                           | RPCNODE_GETH_WSPORT                                     | `8545`                                       | ❌              |                                                                                                                                                     |
-| rpcNode.geth.WSModules                        | RPCNODE_GETH_WSMODULES                                  | `["net", "web3", "eth", "parity"]`           | ❌              |                                                                                                                                                     |
+| rpcNode.httpHost                              | RPCNODE_HTTPHOST                                        | `localhost`                                  | ❌              |                                                                                                                                                     |
+| rpcNode.httpPort                              | RPCNODE_HTTPPORT                                        | `8545`                                       | ❌              |                                                                                                                                                     |
+| rpcNode.httpPathPrefix                        | RPCNODE_HTTPPATHPREFIX                                  | `"*"`                                        | ❌              | `"*"` allows any path, please provide specific prefix starting with `"/"` to limit request URL                                                      |
+| rpcNode.httpCors                              | RPCNODE_HTTPCORS                                        | `""`                                         | ❌              |                                                                                                                                                     |
+| rpcNode.httpCompress                          | RPCNODE_HTTPCOMPRESS                                    | `true`                                       | ❌              |                                                                                                                                                     |
+| rpcNode.httpTimeout                           | RPCNODE_HTTPTIMEOUT                                     | `300`                                        | ❌              | in seconds                                                                                                                                          |
+| rpcNode.wsHost                                | RPCNODE_WSHOST                                          | `localhost`                                  | ❌              |                                                                                                                                                     |
+| rpcNode.wsPort                                | RPCNODE_WSPORT                                          | `8545`                                       | ❌              |                                                                                                                                                     |
+| rpcNode.wsPathPrefix                          | RPCNODE_WSPATHPREFIX                                    | `"*"`                                        | ❌              | `"*"` allows any path, please provide specific prefix starting with `"/"` to limit request URL                                                      |
+| rpcNode.wsHandshakeTimeout                    | RPCNODE__WSHANDSHAKETIMEOUT                             | `10`                                         | ❌              | in seconds                                                                                                                                          |
+| rpcNode.maxBatchRequest                       | RPCNODE_MAXBATCHREQUEST                                 | `10000`                                      | ❌              |                                                                                                                                                     |
 | indexer.sourceFolder                          | INDEXER_SOURCE_FOLDER                                   | `/tmp/relayer/json/`                         | ❌              |                                                                                                                                                     |
 | indexer.subFolderBatchSize                    | INDEXER_SUBFOLDERBATCHSIZE                              | `10000`                                      | ❌              |                                                                                                                                                     |
 | indexer.keepFiles                             | INDEXER_KEEPFILES                                       | `true`                                       | ❌              | deletes the json files after indexing if set to false                                                                                               |
@@ -228,6 +234,54 @@ for detailed explanation and flags of each command see help
     * `MINOR` backward compatible and stable release with new features and/or bug fixes
     * `PATCH` backward compatible and stable release for hot-fixes published out of planned release cycle
     * `PRERELEASE` does not guarantees stability, mostly used for QA cycles, e.g.: `alpha`, `beta` with optional build number
+
+## Migration
+### from v2.0.x to v2.1.x
+Relayer2-Public v2.1.0 introduces a new JSON-RPC server. Therefore, for those who already have a native Relayer2-Public with version 
+`v2.0.x` should update the configuration .yaml file accordingly.
+#### sample v2.0.x config.yaml
+```shell
+rpcNode:
+  geth:                    # -> deprecated
+    HTTPHost: localhost
+    HTTPPort: 8545
+    HTTPPathPrefix: ""
+    HTTPCors: 
+      - "*"
+    HTTPVirtualHosts:      # -> deprecated
+      - "*"
+    HTTPModules:           # -> deprecated
+      - "net"
+      - "web3"
+      - "eth"
+      - "parity"
+    WSHost: localhost
+    WSPort: 8545
+    WSPathPrefix: ""
+    WSModules:             # -> deprecated
+      - "net"
+      - "web3"
+      - "eth"
+      - "parity"
+```
+#### sample v2.1. config.yaml
+```shell
+rpcNode:
+  httpHost: localhost
+  httpPort: 8545
+  httpPathPrefix: "*"
+  httpCors: 
+    - "*"
+  httpCompress: true      # -> new subfield
+  httpTimeout: 300        # -> new subfield
+  wsHost: localhost
+  wsPort: 8545
+  wsPathPrefix: "*"
+  wsHandshakeTimeout: 10  # -> new subfield
+  maxBatchRequests: 1000  # -> new subfield
+```
+**IMPORTANT** Please note that configuration update step is automatically done if you are
+using distribution project [Standalone Aurora Relayer and Refiner].
 
 ## Contributing
 

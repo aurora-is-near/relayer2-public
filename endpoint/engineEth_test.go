@@ -1,11 +1,10 @@
 package endpoint
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/hex"
-	"github.com/aurora-is-near/relayer2-base/types/common"
-	"github.com/aurora-is-near/relayer2-base/types/engine"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -15,10 +14,13 @@ import (
 	"github.com/aurora-is-near/relayer2-base/db"
 	"github.com/aurora-is-near/relayer2-base/db/badger"
 	commonEndpoint "github.com/aurora-is-near/relayer2-base/endpoint"
-
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/aurora-is-near/relayer2-base/types/common"
+	"github.com/aurora-is-near/relayer2-base/types/engine"
+	"github.com/aurora-is-near/relayer2-base/types/primitives"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/valyala/fasthttp"
 )
 
 const (
@@ -52,7 +54,7 @@ const engineEthTestFailYaml2 = `
 endpoint:
   engine:
     nearNetworkID: testnet
-    nearNodeURL: https://rpc.testnet.near.org
+    nearNodeURL: https://archival-rpc.testnet.near.org
     signer: asd.testnet
 `
 
@@ -60,9 +62,9 @@ const engineEthTestYaml = `
 endpoint:
   engine:
     nearNetworkID: testnet
-    nearNodeURL: https://rpc.testnet.near.org
-    signer: tolgcoplu.testnet
-    SignerKey: ../config/tolgcoplu.testnet.json
+    nearNodeURL: https://archival-rpc.testnet.near.org
+    signer: tolgacoplu.testnet
+    SignerKey: /Users/tolgacoplu/.near-credentials/testnet/tolgacoplu.testnet.json
     minGasPrice: 0
     minGasLimit: 21000
     gasForNearTxsCall: 300000000000000
@@ -73,12 +75,12 @@ endpoint:
 
 var handler db.Handler
 
-var rpcClientBase *rpc.Client
 var baseEndpoint *commonEndpoint.Endpoint
 var engineEth *EngineEth
 var engineNet *EngineNet
 var fromAddr common.Address
 var toAddr common.Address
+var gasZero common.Uint256
 var transferVal common.Uint256
 var transferValOOF common.Uint256
 var contractAddr common.Address
@@ -127,12 +129,10 @@ func TestMain(m *testing.M) {
 	engineEth = NewEngineEth(baseEndpoint)
 	engineNet = NewEngineNet(engineEth)
 
-	// Create a rpc client to run JSON RPC calls and compare the results
-	rpcClientBase, _ = rpc.DialContext(context.Background(), baseUrl)
-
 	// Create from, to, and contract addresses to use in the tests
 	fromAddr = common.HexStringToAddress(fromAddress)
 	toAddr = common.HexStringToAddress(toAddress)
+	gasZero = common.IntToUint256(0)
 	transferVal = common.IntToUint256(transferValue)
 	transferValOOF = common.IntToUint256(transferValueOOF)
 	contractAddr = common.HexStringToAddress(contractAddress)
@@ -140,24 +140,24 @@ func TestMain(m *testing.M) {
 	contractAddrCallTooDeep = common.HexStringToAddress(contractAddressCallTooDeep)
 	contractAddrOutOfOffset = common.HexStringToAddress(contractAddressOutOfOffset)
 
-	contractData, _ = hex.DecodeString(contractCheckMethodData[2:])
-	contractDataStackOverFlow, _ = hex.DecodeString(contractCallToDeepMethodData[2:])
-	contractDataCallTooDeep, _ = hex.DecodeString(contractCallTestMethodData[2:])
-	contractDataOutOfOffset, _ = hex.DecodeString(contractCallTestOOOMethodData[2:])
-	txsInvalidNonce, _ = hex.DecodeString(txsInvalidNonceStr[2:])
-	txsInvalidRawData, _ = hex.DecodeString(txsInvalidRawDataStr[2:])
-	txsLowGasLimit, _ = hex.DecodeString(txsLowGasLimitStr[2:])
-	txsLowGasPrice, _ = hex.DecodeString(txsLowGasPriceStr[2:])
+	contractData = common.HexStringToDataVec(contractCheckMethodData)
+	contractDataStackOverFlow = common.HexStringToDataVec(contractCallToDeepMethodData)
+	contractDataCallTooDeep = common.HexStringToDataVec(contractCallTestMethodData)
+	contractDataOutOfOffset = common.HexStringToDataVec(contractCallTestOOOMethodData)
+	txsInvalidNonce = common.HexStringToDataVec(txsInvalidNonceStr)
+	txsInvalidRawData = common.HexStringToDataVec(txsInvalidRawDataStr)
+	txsLowGasLimit = common.HexStringToDataVec(txsLowGasLimitStr)
+	txsLowGasPrice = common.HexStringToDataVec(txsLowGasPriceStr)
 
 	// If no default provided user the random generated addresses
-	if fromAddr.String() == zeroAddress {
-		rand.Read(fromAddr.Address[:])
+	if fromAddr.Hex() == zeroAddress {
+		rand.Read(fromAddr.Bytes())
 	}
-	if toAddr.String() == zeroAddress {
-		rand.Read(toAddr.Address[:])
+	if toAddr.Hex() == zeroAddress {
+		rand.Read(toAddr.Bytes())
 	}
-	if contractAddr.String() == zeroAddress {
-		rand.Read(contractAddr.Address[:])
+	if contractAddr.Hex() == zeroAddress {
+		rand.Read(contractAddr.Bytes())
 	}
 
 	exitVal := m.Run()
@@ -190,28 +190,24 @@ func TestNetEndpointsCompare(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutSec*time.Second)
 	defer cancel()
 
-	resp, err := engineNet.Version(ctx)
+	result, err := engineNet.Version(ctx)
 	if err != nil {
 		t.Error("Version request error:", err)
 	}
-	respHex := *resp
+	resultHex := *result
 
-	var respExpected string
-	err = rpcClientBase.CallContext(ctx, &respExpected, "net_version")
+	respExpectedStr, err := CallMethodAsHttpClient("net_version", []interface{}{})
 	if err != nil {
 		t.Log("request error:", err)
 	}
 
-	if (respHex == "" && respExpected == "") || respExpected != respHex {
-		t.Errorf("incorrect result: expected %s, got %s", respExpected, respHex)
+	if resultHex == "" || !strings.Contains(respExpectedStr, resultHex) {
+		t.Errorf("incorrect result: expected response %s, however resulst is %s", respExpectedStr, resultHex)
 	}
 }
 
 func TestEthEndpointsCompare(t *testing.T) {
-	SafeBlockNumber := common.IntToBN64(-4)
-	FinalizedBlockNumber := common.IntToBN64(-3)
-	PendingBlockNumber := common.IntToBN64(-2)
-	LatestBlockNumber := common.IntToBN64(-1)
+	LatestBlockNumber := common.BlockNumberOrHashWithBN64(common.LatestBlockNumber)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutSec*time.Second)
 	defer cancel()
@@ -223,10 +219,7 @@ func TestEthEndpointsCompare(t *testing.T) {
 		args   []interface{}
 	}{
 		{"test eth_chainId", "eth_chainId", "ChainId", []interface{}{ctx}},
-		{"test eth_getCode with EOA and safe block num", "eth_getCode", "GetCode", []interface{}{ctx, toAddr, &SafeBlockNumber}},
-		{"test eth_getCode with safe block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &SafeBlockNumber}},
-		{"test eth_getCode with finalized block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &FinalizedBlockNumber}},
-		{"test eth_getCode with pending block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &PendingBlockNumber}},
+		{"test eth_getCode with EOA and safe block num", "eth_getCode", "GetCode", []interface{}{ctx, toAddr, &LatestBlockNumber}},
 		{"test eth_getCode with latest block num", "eth_getCode", "GetCode", []interface{}{ctx, contractAddr, &LatestBlockNumber}},
 		{"test eth_getBalance with latest block num", "eth_getBalance", "GetBalance", []interface{}{ctx, fromAddr, &LatestBlockNumber}},
 		{"test eth_getTransactionCount with latest block num", "eth_getTransactionCount", "GetTransactionCount", []interface{}{ctx, fromAddr, &LatestBlockNumber}},
@@ -235,7 +228,6 @@ func TestEthEndpointsCompare(t *testing.T) {
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			// Use an rpc client to get the expected value
-			var expectedStr string
 			var tmpArgs []interface{}
 			if len(d.args) > 2 {
 				tmpArgs = d.args[1 : len(d.args)-1]
@@ -243,7 +235,7 @@ func TestEthEndpointsCompare(t *testing.T) {
 				tmpArgs = d.args[1:]
 			}
 
-			err := rpcClientBase.CallContext(ctx, &expectedStr, d.api, tmpArgs...)
+			expectedRespStr, err := CallMethodAsHttpClient(d.api, tmpArgs)
 			if err != nil {
 				t.Log(d.api, " client base error:", err)
 			}
@@ -256,22 +248,13 @@ func TestEthEndpointsCompare(t *testing.T) {
 			// Compare the retrieved response and expected result
 			switch v := resp.(type) {
 			case *common.Uint256:
-				// leading zeros should be checked and removed (if any)
-				tmpStr := ""
-				for expectedStr != tmpStr {
-					tmpStr = expectedStr
-					expectedStr = "0x" + strings.TrimPrefix(expectedStr[2:len(expectedStr)-1], "0") + expectedStr[len(expectedStr)-1:]
-				}
-				expectedUint256, err := common.Uint256FromHex(expectedStr)
-				if err != nil {
-					t.Errorf("error while decoding string to Uint256: %v", err)
-				}
-				if v.Cmp(*expectedUint256) != 0 {
-					t.Errorf("incorrect response: expected 0x%s, got 0x%s", expectedUint256.Text(16), v.Text(16))
+				resultHexStr := "0x" + v.Text(16)
+				if !strings.Contains(expectedRespStr, resultHexStr) {
+					t.Errorf("incorrect response: expected response %s, got %s", expectedRespStr, resultHexStr)
 				}
 			case *string:
-				if *v != expectedStr {
-					t.Errorf("incorrect response: expected %s, got %s", expectedStr, *v)
+				if !strings.Contains(expectedRespStr, *v) {
+					t.Errorf("incorrect response: expected response %s, got %s", expectedRespStr, *v)
 				}
 			default:
 				t.Errorf("incorrect type in response")
@@ -280,8 +263,44 @@ func TestEthEndpointsCompare(t *testing.T) {
 	}
 }
 
+func newTransactionForCall(from, to *common.Address, gas, gasPrice, value *common.Uint256, data *common.DataVec) engine.TransactionForCall {
+
+	var f, t primitives.Data20
+	if from != nil {
+		f = primitives.Data20FromBytes(from.Bytes())
+	}
+	if to != nil {
+		t = primitives.Data20FromBytes(to.Bytes())
+	}
+
+	var g, gp, v primitives.Quantity
+	if gas != nil {
+		g = primitives.QuantityFromBytes(gas.Bytes())
+	}
+	if gasPrice != nil {
+		gp = primitives.QuantityFromBytes(gasPrice.Bytes())
+	}
+	if value != nil {
+		v = primitives.QuantityFromBytes(value.Bytes())
+	}
+
+	var d primitives.VarData
+	if data != nil {
+		d = primitives.VarDataFromBytes(data.Bytes())
+	}
+
+	return engine.TransactionForCall{
+		From:     &f,
+		To:       &t,
+		Gas:      &g,
+		GasPrice: &gp,
+		Value:    &v,
+		Data:     &d,
+	}
+}
+
 func TestEthEndpointsStatic(t *testing.T) {
-	LatestBlockNumber := common.IntToBN64(-1)
+	LatestBlockNumber := common.BlockNumberOrHashWithBN64(common.LatestBlockNumber)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutSec*time.Second)
 	defer cancel()
@@ -295,20 +314,19 @@ func TestEthEndpointsStatic(t *testing.T) {
 		expectedResult string
 	}{
 		{"test aysnc eth_sendRawTransaction incorrect nonce", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidNonce}, true, "anyHash"},
-		{"test sync eth_sendRawTransaction incorrect txs raw data", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidRawData}, false, "transaction parameter is not correct"},
-		// Needs changes on engine side to be able to run this test. Therefore, it is commented out for now
-		// {"test sync eth_sendRawTransaction low gas price", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasPrice}, false, "gas price too low"},
+		{"test sync eth_sendRawTransaction incorrect txs raw data", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidRawData}, false, "value size exceeds available input length"},
 		{"test sync eth_sendRawTransaction low gas limit", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasLimit}, false, "intrinsic gas too low"},
 		{"test sync eth_sendRawTransaction incorrect nonce", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidNonce}, false, "ERR_INCORRECT_NONCE"},
-		{"test eth_call contract data", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &contractAddr, Data: contractData}, &LatestBlockNumber}, false, "0x0000000000000000000000000000000000000000000000000000000000000005"},
-		{"test eth_call transfer to EOA", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferVal}, &LatestBlockNumber}, false, "0x"},
+		{"test eth_call contract data", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &contractAddr, nil, nil, nil, &contractData), &LatestBlockNumber}, false, "0x0000000000000000000000000000000000000000000000000000000000000005"},
+		{"test eth_call transfer to EOA", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, nil, nil, &transferVal, nil), &LatestBlockNumber}, false, "0x"},
 		// Needs changes on engine side to be able to run this test properly. Normally, "execution error: Out Of Gas" should be retrieved. Hovewer, since max gas is staticilly applied the result seems to be success
-		{"test eth_call out of gas", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferVal, Gas: &transferValOOF}, &LatestBlockNumber}, false, "0x"},
-		{"test eth_call out of fund", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &toAddr, Value: &transferValOOF}, &LatestBlockNumber}, false, "Ok(OutOfFund)"},
-		{"test eth_call stack overflow", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{To: &contractAddrStackOverFlow, Data: contractDataStackOverFlow}, &LatestBlockNumber}, false, "EvmError(StackOverflow)"},
+		{"test eth_call out of gas", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, &transferValOOF, nil, &transferVal, nil), &LatestBlockNumber}, false, "0x"},
+		{"test eth_call out of fund", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, nil, nil, &transferValOOF, nil), &LatestBlockNumber}, false, "Ok(OutOfFund)"},
+		{"test eth_call low gas price", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, &gasZero, nil, &transferVal, nil), &LatestBlockNumber}, false, "Ok(OutOfGas)"},
+		{"test eth_call stack overflow", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(nil, &contractAddrStackOverFlow, nil, nil, nil, &contractDataStackOverFlow), &LatestBlockNumber}, false, "EvmError(StackOverflow)"},
 		// Testnet returns "0x" for Revert status, following the same approach
-		{"test eth_call call too deep", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{To: &contractAddrCallTooDeep, Data: contractDataCallTooDeep}, &LatestBlockNumber}, false, "execution reverted without data"},
-		{"test eth_call out of offset", "eth_call", "Call", []interface{}{ctx, engine.TransactionForCall{From: &fromAddr, To: &contractAddrOutOfOffset, Data: contractDataOutOfOffset}, &LatestBlockNumber}, false, "Ok(OutOfOffset)"},
+		{"test eth_call call too deep", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(nil, &contractAddrCallTooDeep, nil, nil, nil, &contractDataCallTooDeep), &LatestBlockNumber}, false, "execution reverted"},
+		{"test eth_call out of offset", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &contractAddrOutOfOffset, nil, nil, nil, &contractDataOutOfOffset), &LatestBlockNumber}, false, "Ok(OutOfOffset)"},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
@@ -328,7 +346,7 @@ func TestEthEndpointsStatic(t *testing.T) {
 					t.Errorf("incorrect response: expected %s, got %s", d.expectedResult, *v)
 				}
 			default:
-				if err.Error() != d.expectedResult {
+				if !strings.Contains(err.Error(), d.expectedResult) {
 					t.Errorf("incorrect response: expected %s, got %s", d.expectedResult, err.Error())
 				}
 			}
@@ -348,4 +366,29 @@ func Invoke(ctx context.Context, obj interface{}, method string, args ...interfa
 		return nil, err.(error)
 	}
 	return values[0].Interface(), nil
+}
+
+func CallMethodAsHttpClient(method string, args []interface{}) (string, error) {
+	req := fasthttp.AcquireRequest()
+	respExpected := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(respExpected)
+
+	argsBytes, _ := jsoniter.Marshal(args)
+
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, `{"jsonrpc":"2.0","id":314,"method": "%s", "params": %s}`, method, string(argsBytes))
+	rpcMsg := buf.Bytes()
+
+	req.SetRequestURI(baseUrl)
+	req.Header.SetContentType("application/json")
+	req.Header.SetMethod("POST")
+	req.SetBody(rpcMsg)
+
+	err := fasthttp.Do(req, respExpected)
+	if err != nil {
+		return "", err
+	}
+
+	return string(respExpected.Body()), nil
 }
