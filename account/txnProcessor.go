@@ -17,7 +17,7 @@ import (
 
 const (
 	qCap                          = 1000
-	timeoutSeconds                = 30
+	timeoutSeconds                = 60
 	timeoutSeconds2               = 2 * timeoutSeconds
 	enqueueWaitMilliseconds       = 50
 	minNonceUpdateIntervalSeconds = 5
@@ -136,6 +136,9 @@ func (tp *TxnProcessor) NewTxnReq(rawTxn []byte) (*TxnReq, error) {
 func (tp *TxnProcessor) Submit(req *TxnReq) *TxnResp {
 
 	resp := &TxnResp{
+		txnResp: &txnResp{
+			status: txnStatus_Any,
+		},
 		received: false,
 		done:     make(chan struct{}, 1),
 	}
@@ -152,7 +155,10 @@ func (tp *TxnProcessor) Submit(req *TxnReq) *TxnResp {
 			if !tp.eval(req, resp) {
 				break
 			}
-			tp.unordered[req.processorIndex].TryEnqueue(req)
+			if !tp.unordered[req.processorIndex].TryEnqueue(req) {
+				break
+			}
+			tp.logger.Info().Msgf("retrying txn [%s] - sender: [%s], eth nonce: [%d]", req.hash, req.sender.Hex(), req.nonce)
 		}
 		// notify response waiter if any, i.e.: sync requests
 		resp.Notify()
@@ -200,7 +206,7 @@ func (tp *TxnProcessor) sort(req *TxnReq) {
 			// nonce is low, discard the request (nothing to do)
 			req.RespondWithStatus(txnStatus_EthNonceTooLow)
 		} else {
-			// non-blocking wait used to prevent execessive CPU usage
+			// non-blocking wait used to prevent excessive CPU usage
 			time.AfterFunc(enqueueWaitMilliseconds*time.Millisecond, func() {
 				// nonce is high, enqueue this request and wait for another with correct nonce
 				if !tp.unordered[req.processorIndex].TryEnqueue(req) {
@@ -230,7 +236,7 @@ func (tp *TxnProcessor) send(req *TxnReq) {
 		return
 	}
 
-	tp.logger.Info().Msgf("sending txn - sender: [%s], eth nonce: [%d], near nonce: [%d]", req.sender.Hex(), req.nonce, nonce)
+	tp.logger.Info().Msgf("sending txn [%s] - sender: [%s], eth nonce: [%d], near nonce: [%d]", req.hash, req.sender.Hex(), req.nonce, nonce)
 
 	go func(key string, req *TxnReq) {
 		resp, err := tp.account.FunctionCallWithMultiActionAndKeyAndNonce(utils.AccountId, "submit", key,
@@ -268,7 +274,11 @@ func (tp *TxnProcessor) eval(req *TxnReq, resp *TxnResp) (retry bool) {
 	act := statusActions[resp.status]
 	if act.updateNearCache || act.updateEthCache || (act.backoffMs != time.Duration(0)) {
 		tp.retryMutex[req.processorIndex].Lock()
-		defer tp.retryMutex[req.processorIndex].Unlock()
+		tp.circuitBreaker[req.processorIndex] = true
+		defer func() {
+			tp.retryMutex[req.processorIndex].Unlock()
+			tp.circuitBreaker[req.processorIndex] = false
+		}()
 	}
 
 	retry = act.retry
@@ -320,8 +330,12 @@ func (tp *TxnProcessor) nextNearNonce(key string) (uint64, error) {
 
 func (tp *TxnProcessor) updateNearNonceCache(key string) error {
 
-	if time.Now().Before(tp.nearNonceCache[key].updateTime.Add(minNonceUpdateIntervalSeconds * time.Second)) {
-		return nil
+	if nc, ok := tp.nearNonceCache[key]; ok {
+		if time.Now().Before(nc.updateTime.Add(minNonceUpdateIntervalSeconds * time.Second)) {
+			return nil
+		}
+	} else {
+		tp.nearNonceCache[key] = &nonceCache{updateTime: time.Now().Add(time.Second * time.Duration(-minNonceUpdateIntervalSeconds))}
 	}
 
 	nonce, err := tp.account.ViewNonce(key)
@@ -335,8 +349,13 @@ func (tp *TxnProcessor) updateNearNonceCache(key string) error {
 
 func (tp *TxnProcessor) updateEthNonceCache(address common.Address) error {
 
-	if time.Now().Before(tp.ethNonceCache[address.Hex()].updateTime.Add(minNonceUpdateIntervalSeconds * time.Second)) {
-		return nil
+	key := address.Hex()
+	if nc, ok := tp.ethNonceCache[key]; ok {
+		if time.Now().Before(nc.updateTime.Add(minNonceUpdateIntervalSeconds * time.Second)) {
+			return nil
+		}
+	} else {
+		tp.ethNonceCache[key] = &nonceCache{updateTime: time.Now().Add(time.Second * time.Duration(-minNonceUpdateIntervalSeconds))}
 	}
 
 	lbn := common.LatestBlockNumber
@@ -357,8 +376,8 @@ func (tp *TxnProcessor) updateEthNonceCache(address common.Address) error {
 		return err
 	}
 
-	tp.ethNonceCache[address.Hex()].nonce = n.Uint64()
-	tp.ethNonceCache[address.Hex()].updateTime = time.Now()
-	tp.logger.Info().Msgf("eth nonce update - address[%s], new nonce: [%d]", address.Hex(), n.Uint64())
+	tp.ethNonceCache[key].nonce = n.Uint64()
+	tp.ethNonceCache[key].updateTime = time.Now()
+	tp.logger.Info().Msgf("eth nonce update - address[%s], new nonce: [%d]", key, n.Uint64())
 	return nil
 }
