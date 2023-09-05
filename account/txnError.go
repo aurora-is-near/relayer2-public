@@ -30,7 +30,7 @@ var statusActions = map[txnStatus]action{
 	txnStatus_TimeOutError3:      {backoffMs: 0, retry: false, updateEthCache: false, updateNearCache: false, error: fmt.Errorf("txn time out")},               // TODO: error format
 	txnStatus_NearNonceError:     {backoffMs: 1000, retry: true, updateEthCache: true, updateNearCache: true, error: fmt.Errorf("failed to get Near nonce")},   // TODO: error format
 	txnStatus_EthNonceError:      {backoffMs: 1000, retry: true, updateEthCache: true, updateNearCache: true},
-	txnStatus_EthNonceTooLow:     {backoffMs: 0, retry: false, updateEthCache: false, updateNearCache: false, error: fmt.Errorf("nonce is too low")},
+	txnStatus_EthNonceTooLow:     {backoffMs: 0, retry: true, updateEthCache: true, updateNearCache: false, error: fmt.Errorf("nonce is too low")},
 	txnStatus_NearOutOfFundError: {backoffMs: 0, retry: false, updateEthCache: true, updateNearCache: true},
 	txnStatus_EthOutOfFundError:  {backoffMs: 0, retry: false, updateEthCache: true, updateNearCache: false},
 }
