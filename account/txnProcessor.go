@@ -2,6 +2,9 @@ package account
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/aurora-is-near/near-api-go"
 	"github.com/aurora-is-near/relayer2-base/endpoint"
 	"github.com/aurora-is-near/relayer2-base/log"
@@ -10,14 +13,13 @@ import (
 	"github.com/aurora-is-near/relayer2-base/utils"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
-	"sync"
-	"time"
 )
 
 const (
 	qCap                          = 1000
 	timeoutSeconds                = 30
 	timeoutSeconds2               = 2 * timeoutSeconds
+	enqueueWaitMilliseconds       = 50
 	minNonceUpdateIntervalSeconds = 5
 )
 
@@ -198,10 +200,13 @@ func (tp *TxnProcessor) sort(req *TxnReq) {
 			// nonce is low, discard the request (nothing to do)
 			req.RespondWithStatus(txnStatus_EthNonceTooLow)
 		} else {
-			// nonce is high, enqueue this request and wait for another with correct nonce
-			if !tp.unordered[req.processorIndex].TryEnqueue(req) {
-				req.RespondWithStatus(txnStatus_Exhausted)
-			}
+			// non-blocking wait used to prevent execessive CPU usage
+			time.AfterFunc(enqueueWaitMilliseconds*time.Millisecond, func() {
+				// nonce is high, enqueue this request and wait for another with correct nonce
+				if !tp.unordered[req.processorIndex].TryEnqueue(req) {
+					req.RespondWithStatus(txnStatus_Exhausted)
+				}
+			})
 		}
 	}
 }

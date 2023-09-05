@@ -3,13 +3,14 @@ package account
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/aurora-is-near/near-api-go"
 	"github.com/aurora-is-near/relayer2-base/endpoint"
 	"github.com/aurora-is-near/relayer2-base/types/common"
 	"github.com/aurora-is-near/relayer2-base/types/engine"
 	errs "github.com/aurora-is-near/relayer2-base/types/errors"
 	"github.com/aurora-is-near/relayer2-base/utils"
-	"strings"
 )
 
 var (
@@ -126,10 +127,10 @@ func (a *Account) GetTransactionCount(addr []byte, bn *int64) (*common.Uint256, 
 
 func (a *Account) SendRawTransaction(txn []byte) (*string, error) {
 	txnReq, err := a.txnProcessor.NewTxnReq(txn)
-	txnHash := txnReq.Hash()
 	if err != nil {
 		return nil, &errs.InvalidParamsError{Message: err.Error()}
 	}
+	txnHash := txnReq.Hash()
 	if a.config.AsyncSendRawTxs {
 		a.txnProcessor.Submit(txnReq)
 		return &txnHash, nil

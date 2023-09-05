@@ -3,6 +3,7 @@ package endpoint
 import (
 	"context"
 	"errors"
+
 	"github.com/aurora-is-near/relayer2-base/endpoint"
 	"github.com/aurora-is-near/relayer2-base/types/common"
 	"github.com/aurora-is-near/relayer2-base/types/engine"
@@ -107,7 +108,7 @@ func (e *EngineEth) getTransactionCount(ctx context.Context, address common.Addr
 //	On missing or invalid param returns error code '-32602' with custom message.
 func (e *EngineEth) GetStorageAt(ctx context.Context, address common.Address, storageSlot common.Uint256, bNumOrHash *common.BlockNumberOrHash) (*string, error) {
 	return endpoint.Process(ctx, "eth_getStorageAt", e.Endpoint, func(ctx context.Context) (*string, error) {
-		return e.GetStorageAt(ctx, address, storageSlot, bNumOrHash)
+		return e.getStorageAt(ctx, address, storageSlot, bNumOrHash)
 	}, address, bNumOrHash)
 }
 
