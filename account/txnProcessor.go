@@ -145,13 +145,10 @@ func (tp *TxnProcessor) Submit(req *TxnReq) *TxnResp {
 		done:     make(chan struct{}, 1),
 	}
 
-	// wait for response with timeout
+	// wait for response
 	go func(req *TxnReq, resp *TxnResp) {
 		for {
 			select {
-			case <-time.After(time.Second * timeoutSeconds * 3):
-				tp.logger.Error().Msgf("Unexpected Txn timeout for eth nonce [%d]", req.nonce)
-				resp.SetWithStatus(txnStatus_TimeOutError1)
 			case r := <-req.respChan:
 				resp.Set(r)
 			}
@@ -208,7 +205,7 @@ func (tp *TxnProcessor) sort(req *TxnReq) {
 			nc.nonce += 1
 			tp.ordered[req.processorIndex].Enqueue(req)
 			tp.logger.Info().Msgf("sort -> ordering txs: [%d]", req.nonce) // TODO: make the log DEBUG level
-		} else if req.retransmit { //if retransmit flag is set
+		} else if req.retransmit { // if retransmit flag is set
 			tp.ordered[req.processorIndex].Enqueue(req)
 			tp.logger.Info().Msgf("sort -> retransmit txs: [%d]", req.nonce) // TODO: make the log DEBUG level
 		} else if nc.nonce > req.nonce {
@@ -270,7 +267,7 @@ func (tp *TxnProcessor) eval(req *TxnReq, resp *TxnResp) (retry bool) {
 			tp.logger.Info().Msgf("isTxnResponseFailure detected failure [%d] for nonce [%d]", resp.status, req.nonce) // TODO: make the log DEBUG level
 		} else {
 			if req.retransmit {
-				//retransmit succeeded which shows that previous Near Timeout failed. Just for debug purposes
+				// retransmit succeeded which shows that previous Near Timeout failed. Just for debug purposes
 				tp.logger.Info().Msgf("SUCCESS after Near TIMEOUT for nonce [%d]", req.nonce) // TODO: remove/commnet out during production
 			}
 
@@ -393,8 +390,9 @@ func (tp *TxnProcessor) updateNearNonceCache(key string) error {
 }
 
 // updateEthNonceCache updates ethereum nonce cache if last update time satisfies the minNonceUpdateIntervalSeconds interval
+//
 //	returns false, error if no update performed
-// 	returns true, error if updated
+//	returns true, error if updated
 func (tp *TxnProcessor) updateEthNonceCache(address common.Address) (bool, error) {
 	key := address.Hex()
 	if nc, ok := tp.ethNonceCache[key]; ok {
@@ -430,6 +428,7 @@ func (tp *TxnProcessor) updateEthNonceCache(address common.Address) (bool, error
 }
 
 // isTxnResponseFailure process the response to return
+//
 //	true, failure_map, nil -> for failure case
 //	false, nil, nil -> for success case
 //	false, nil, err -> for invalid response
@@ -448,6 +447,7 @@ func isTxnResponseFailure(resp interface{}) (bool, interface{}, error) {
 }
 
 // getTxnStatusForFailureType process the failure map according to the statusMappingArray
+//
 //	returns txnStatus_Any if no match
 //	returns the provided status for full match
 func getTxnStatusForFailureType(mapFailure interface{}) txnStatus {
