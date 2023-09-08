@@ -2,6 +2,7 @@ package account
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,11 +17,11 @@ import (
 )
 
 const (
-	qCap                          = 1000
+	qCap                          = 100
 	timeoutSeconds                = 60
 	timeoutSeconds2               = 2 * timeoutSeconds
-	enqueueWaitMilliseconds       = 50
-	minNonceUpdateIntervalSeconds = 5
+	enqueueWaitMilliseconds       = 100
+	minNonceUpdateIntervalSeconds = 2
 )
 
 type TxnProcessor struct {
@@ -128,6 +129,7 @@ func (tp *TxnProcessor) NewTxnReq(rawTxn []byte) (*TxnReq, error) {
 		rawTxn:         rawTxn,
 		respChan:       make(chan *txnResp, 1),
 		hash:           utils.CalculateKeccak256(rawTxn),
+		retransmit:     false,
 	}, nil
 }
 
@@ -147,7 +149,8 @@ func (tp *TxnProcessor) Submit(req *TxnReq) *TxnResp {
 	go func(req *TxnReq, resp *TxnResp) {
 		for {
 			select {
-			case <-time.After(time.Second * timeoutSeconds):
+			case <-time.After(time.Second * timeoutSeconds * 3):
+				tp.logger.Error().Msgf("Unexpected Txn timeout for eth nonce [%d]", req.nonce)
 				resp.SetWithStatus(txnStatus_TimeOutError1)
 			case r := <-req.respChan:
 				resp.Set(r)
@@ -192,19 +195,26 @@ func (tp *TxnProcessor) sort(req *TxnReq) {
 	if nc, ok := tp.ethNonceCache[req.sender.Hex()]; !ok {
 		// if cache miss, then we assume the first received nonce is correct
 		tp.ethNonceCache[req.sender.Hex()] = &nonceCache{
-			nonce:      req.nonce,
+			nonce:      req.nonce + 1,
 			updateTime: time.Now().Add(time.Second * time.Duration(-minNonceUpdateIntervalSeconds)),
 		}
+
 		tp.ordered[req.processorIndex].Enqueue(req)
+		tp.logger.Info().Msgf("sort -> init txs: [%d]", req.nonce) // TODO: make the log DEBUG level
 	} else {
 		// if cache hit, compare with request's nonce
 		if nc.nonce == req.nonce {
 			// nonce match, push request to ordered Q
 			nc.nonce += 1
 			tp.ordered[req.processorIndex].Enqueue(req)
+			tp.logger.Info().Msgf("sort -> ordering txs: [%d]", req.nonce) // TODO: make the log DEBUG level
+		} else if req.retransmit { //if retransmit flag is set
+			tp.ordered[req.processorIndex].Enqueue(req)
+			tp.logger.Info().Msgf("sort -> retransmit txs: [%d]", req.nonce) // TODO: make the log DEBUG level
 		} else if nc.nonce > req.nonce {
 			// nonce is low, discard the request (nothing to do)
 			req.RespondWithStatus(txnStatus_EthNonceTooLow)
+			tp.logger.Info().Msgf("sort -> unordered txs: [%d]", req.nonce) // TODO: make the log DEBUG level
 		} else {
 			// non-blocking wait used to prevent excessive CPU usage
 			time.AfterFunc(enqueueWaitMilliseconds*time.Millisecond, func() {
@@ -213,12 +223,14 @@ func (tp *TxnProcessor) sort(req *TxnReq) {
 					req.RespondWithStatus(txnStatus_Exhausted)
 				}
 			})
+
+			// trigger eth nonce cache update
+			tp.updateEthNonceCache(req.sender)
 		}
 	}
 }
 
 func (tp *TxnProcessor) send(req *TxnReq) {
-
 	if tp.circuitBreaker[req.processorIndex] {
 		req.RespondWithStatus(txnStatus_Reorder)
 		return
@@ -249,26 +261,45 @@ func (tp *TxnProcessor) send(req *TxnReq) {
 func (tp *TxnProcessor) eval(req *TxnReq, resp *TxnResp) (retry bool) {
 
 	if resp.err == nil {
-		// TODO: evaluate response message if response message is successful then return false, else set resp.status to txnStatus_X
-
-		status, err := engine.NewSubmitStatus(resp.resp, req.hash)
-		if err == nil {
-			response, err := status.ToResponse()
-			if err == nil {
-				if *response == "success" { // TODO: change to proper success check
-					return false
-				} else {
-					resp.status = txnStatus_Any // TODO: this is just a place holder, we may need to evaluate to specific error
-				}
-			} else {
-				resp.status = txnStatus_Any // TODO: this is just a place holder, we may need to evaluate to specific error
-			}
+		isFailure, mapFailure, err := isTxnResponseFailure(resp.resp)
+		if err != nil {
+			resp.status = txnStatus_UnhandledError
+			tp.logger.Info().Msgf("isTxnResponseFailure error for nonce [%d] -> %s", req.nonce, err.Error()) // TODO: make the log DEBUG level
+		} else if isFailure {
+			resp.status = getTxnStatusForFailureType(mapFailure)
+			tp.logger.Info().Msgf("isTxnResponseFailure detected failure [%d] for nonce [%d]", resp.status, req.nonce) // TODO: make the log DEBUG level
 		} else {
-			resp.status = txnStatus_Any // TODO: this is just a place holder, we may need to evaluate to specific error
-		}
+			if req.retransmit {
+				//retransmit succeeded which shows that previous Near Timeout failed. Just for debug purposes
+				tp.logger.Info().Msgf("SUCCESS after Near TIMEOUT for nonce [%d]", req.nonce) // TODO: remove/commnet out during production
+			}
 
+			tp.logger.Info().Msgf("SUCCESS for nonce [%d]", req.nonce) // TODO: make the log DEBUG level
+			return false
+		}
 	} else {
-		// TODO: evaluate err message and set resp.status to txnStatus_X
+		if resp.status == txnStatus_NearNonceError {
+			req.retransmit = true
+			tp.logger.Info().Msgf("Near nonce retrievel error, retransmit is triggered for eth nonce [%d]", req.nonce) // TODO: make the log DEBUG level
+		} else if resp.status != txnStatus_Any { // if resp.status is a valid txnStatus_X, no manuplation is needed
+			tp.logger.Info().Msgf("txnStatus error [%d] received for eth nonce [%d]", resp.status, req.nonce) // TODO: make the log DEBUG level
+		} else if strings.Contains(resp.err.Error(), "InvalidNonce:map") {
+			resp.status = txnStatus_NearNonceError
+			tp.logger.Info().Msgf("Near nonce low error for eth nonce [%d] -> %s", req.nonce, resp.err.Error()) // TODO: make the log DEBUG level
+		} else if strings.Contains(resp.err.Error(), "NonceTooLarge") {
+			resp.status = txnStatus_NearNonceTooLarge
+			tp.logger.Info().Msgf("Near nonce too large error for eth nonce [%d]", req.nonce) // TODO: make the log DEBUG level
+		} else if strings.Contains(resp.err.Error(), "Server error: Timeout") {
+			req.retransmit = true
+			resp.status = txnStatus_NearTimeOutError
+			tp.logger.Info().Msgf("Near timeout error occured for eth nonce [%d]", req.nonce) // TODO: make the log DEBUG level
+
+		} else {
+			// response error is either encoding/decoding error thrown from near-api-go library or a near rpc error (like INVALID_TRANSACTION, PARSE_ERROR)
+			// since retry flow is not useful for these error cases, we trigger nonce updates solely as a precaution
+			resp.status = txnStatus_UnhandledError
+			tp.logger.Info().Msgf("Unhandled error case for eth nonce [%d]", req.nonce) // TODO: make the log DEBUG level
+		}
 	}
 
 	act := statusActions[resp.status]
@@ -286,13 +317,25 @@ func (tp *TxnProcessor) eval(req *TxnReq, resp *TxnResp) (retry bool) {
 		tp.updateNearNonceCache(tp.keys[req.processorIndex])
 	}
 	if act.updateEthCache {
-		tp.updateEthNonceCache(req.sender)
-	}
+		updated, err := tp.updateEthNonceCache(req.sender)
+		// retry should be forced (return true) if eth nonce cache is not updated or error returned
+		if err != nil || !updated {
+			return true
+		}
+		// after proper cache update, actual nonce can be higher than request nonce,
+		// in this case there is no reason to retry the request just send response with actual error evaluated above
+		if tp.ethNonceCache[req.sender.Hex()].nonce > req.nonce {
 
-	// after cache update actual nonce can be higher than request nonce, in this case there is no reason to retry this
-	// request just send response with actual error evaluated above
-	if tp.ethNonceCache[req.sender.Hex()].nonce > req.nonce {
-		return false
+			// If receieved error is ERR_INCORRECT_NONCE after a re-transmit
+			// txnStatus_EthNonceError response shows that first operation succeeded
+			if req.retransmit && resp.status == txnStatus_EthNonceError {
+				req.RespondWithStatus(txnStatus_Any)
+				resp.resp = success_case_for_retransmit
+				tp.logger.Info().Msgf("ETH_NONCE_ERROR after re-transmit for nonce [%d]", req.nonce) // TODO: make the log DEBUG level
+			}
+
+			return false
+		}
 	}
 
 	if resp.ts.Add(time.Millisecond * act.backoffMs).Before(time.Now()) {
@@ -308,7 +351,6 @@ func (tp *TxnProcessor) eval(req *TxnReq, resp *TxnResp) (retry bool) {
 // Note that, this function is not thread-safe and successive calls increment the cache value so this
 // function is not suitable for view operations.
 func (tp *TxnProcessor) nextNearNonce(key string) (uint64, error) {
-
 	var ok bool
 	var nc *nonceCache
 	if nc, ok = tp.nearNonceCache[key]; !ok {
@@ -322,7 +364,7 @@ func (tp *TxnProcessor) nextNearNonce(key string) (uint64, error) {
 		}
 		tp.nearNonceCache[key] = nc
 	} else {
-		nc.nonce++
+		nc.nonce += 1
 	}
 
 	return nc.nonce, nil
@@ -340,19 +382,24 @@ func (tp *TxnProcessor) updateNearNonceCache(key string) error {
 
 	nonce, err := tp.account.ViewNonce(key)
 	if err == nil {
-		tp.nearNonceCache[key].nonce = nonce
+		// nonce is incremented based on the queue capacity
+		tp.nearNonceCache[key].nonce = nonce + qCap
 		tp.nearNonceCache[key].updateTime = time.Now()
+	} else {
+		tp.logger.Info().Msgf("near nonce update is unseccessfull - key[%s], new nonce: [%d]", key, nonce)
 	}
-	tp.logger.Info().Msgf("near nonce update - key[%s], new nonce: [%d]", key, nonce)
+	tp.logger.Info().Msgf("near nonce update - key[%s], new nonce: [%d]", key, tp.nearNonceCache[key].nonce)
 	return err
 }
 
-func (tp *TxnProcessor) updateEthNonceCache(address common.Address) error {
-
+// updateEthNonceCache updates ethereum nonce cache if last update time satisfies the minNonceUpdateIntervalSeconds interval
+//	returns false, error if no update performed
+// 	returns true, error if updated
+func (tp *TxnProcessor) updateEthNonceCache(address common.Address) (bool, error) {
 	key := address.Hex()
 	if nc, ok := tp.ethNonceCache[key]; ok {
 		if time.Now().Before(nc.updateTime.Add(minNonceUpdateIntervalSeconds * time.Second)) {
-			return nil
+			return false, nil
 		}
 	} else {
 		tp.ethNonceCache[key] = &nonceCache{updateTime: time.Now().Add(time.Second * time.Duration(-minNonceUpdateIntervalSeconds))}
@@ -363,21 +410,72 @@ func (tp *TxnProcessor) updateEthNonceCache(address common.Address) error {
 
 	resp, err := tp.account.ViewFunction(utils.AccountId, "get_nonce", address.Bytes(), bn.Int64())
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	engineResp, err := engine.NewQueryResult(resp)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	n, err := engineResp.ToUint256Response()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	tp.ethNonceCache[key].nonce = n.Uint64()
 	tp.ethNonceCache[key].updateTime = time.Now()
 	tp.logger.Info().Msgf("eth nonce update - address[%s], new nonce: [%d]", key, n.Uint64())
-	return nil
+	return true, nil
+}
+
+// isTxnResponseFailure process the response to return
+//	true, failure_map, nil -> for failure case
+//	false, nil, nil -> for success case
+//	false, nil, err -> for invalid response
+func isTxnResponseFailure(resp interface{}) (bool, interface{}, error) {
+	if status, ok := resp.(map[string]interface{})["status"]; ok {
+		if val, ok2 := status.(map[string]interface{})["Failure"]; ok2 {
+			return ok2, val, nil
+		} else if _, ok3 := status.(map[string]interface{})["SuccessValue"]; ok3 {
+			return false, nil, nil
+		} else {
+			return false, nil, fmt.Errorf("ERR_INVALID_TXN_RESPONSE")
+		}
+
+	}
+	return false, nil, fmt.Errorf("ERR_INVALID_TXN_RESPONSE")
+}
+
+// getTxnStatusForFailureType process the failure map according to the statusMappingArray
+//	returns txnStatus_Any if no match
+//	returns the provided status for full match
+func getTxnStatusForFailureType(mapFailure interface{}) txnStatus {
+	returnStatus := txnStatus_Any
+	p := mapFailure
+	for _, obj := range statusMappingArray {
+		for i, v := range obj.fields {
+			if (i + 1) == len(obj.fields) {
+				if errMsg, ok2 := p.(string); ok2 {
+					if v == "*" {
+						returnStatus = obj.status
+					} else if strings.Contains(errMsg, v) {
+						returnStatus = obj.status
+					} else {
+						returnStatus = txnStatus_Any
+					}
+				}
+			} else if child, ok := p.(map[string]interface{})[v]; ok {
+				p = child
+			} else {
+				returnStatus = txnStatus_Any
+				break
+			}
+		}
+		if returnStatus != txnStatus_Any {
+			break
+		}
+		p = mapFailure
+	}
+	return returnStatus
 }

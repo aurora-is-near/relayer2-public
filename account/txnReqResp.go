@@ -1,9 +1,10 @@
 package account
 
 import (
+	"time"
+
 	"github.com/aurora-is-near/relayer2-base/types/common"
 	"github.com/google/uuid"
-	"time"
 )
 
 type TxnReq struct {
@@ -15,6 +16,7 @@ type TxnReq struct {
 	respChan       chan *txnResp
 	rawTxn         []byte
 	hash           string
+	retransmit     bool
 }
 
 type TxnResp struct {
@@ -33,10 +35,7 @@ type txnResp struct {
 // Expired returns true if transaction request time plus account.timeoutSeconds is greater than the current time,
 // otherwise false
 func (req *TxnReq) Expired() bool {
-	if time.Now().After(time.Unix(req.timestamp, 0).Add(time.Second * timeoutSeconds)) {
-		return true
-	}
-	return false
+	return time.Now().After(time.Unix(req.timestamp, 0).Add(time.Second * timeoutSeconds))
 }
 
 func (req *TxnReq) RespondWithStatus(status txnStatus) {
