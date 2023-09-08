@@ -181,8 +181,14 @@ func getUint256ResultFromEngineResponse(respArg interface{}) (*common.Uint256, e
 	return engineResult.ToUint256Response()
 }
 
-// getTxsResultFromEngineResponse gets the sendRawTransactionSync response, parse and process the near data structures to be able to generate the rpc response
+// getTxsResultFromEngineResponse processes the response to return success or error cases
 func getTxsResultFromEngineResponse(respArg interface{}, txsHash string) (*string, error) {
+	// txnProcessor returns respArg as string if the retransmit after Near timout succeeds
+	if val, ok := respArg.(string); ok && (val == success_case_for_retransmit) {
+		return &txsHash, nil
+	}
+
+	// respArg needs to be processed according to the Engine structures to be able to return the response
 	status, err := engine.NewSubmitStatus(respArg, txsHash)
 	if err != nil {
 		return nil, &errs.GenericError{Err: err}
