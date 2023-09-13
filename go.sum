@@ -54,6 +54,8 @@ github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1 h1:Nw9J9K7CksfVBa9uCVfvf1uAIQRhrN
 github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1/go.mod h1:Li013EFlPu3crtlFQtWJAeE7VmdhSsxOpRoop1J0icw=
 github.com/aurora-is-near/near-api-go v0.0.13-0.20230808115242-54ddcda150c6 h1:PaHSXsJp0P4vT/EN4XJdsvOMYXeQLW9fEO9wle8FEVc=
 github.com/aurora-is-near/near-api-go v0.0.13-0.20230808115242-54ddcda150c6/go.mod h1:u1KDIqjCl+g+Ndp8izReS5zXI05YWCgQR3iOYXhnhHI=
+github.com/aurora-is-near/near-api-go v0.0.13-0.20230829055300-6861f234540b h1:I6gKAe7Xp3EknGTNgkXbur3FAQSnh+s8kquxWj3RkUM=
+github.com/aurora-is-near/near-api-go v0.0.13-0.20230829055300-6861f234540b/go.mod h1:u1KDIqjCl+g+Ndp8izReS5zXI05YWCgQR3iOYXhnhHI=
 github.com/aurora-is-near/relayer2-base v1.1.2-0.20230804133711-8cee7c9a5993 h1:w0YZl8uI3s4w6QKD6vEJ1R/u0zQlQfQbL8PM14FXjek=
 github.com/aurora-is-near/relayer2-base v1.1.2-0.20230804133711-8cee7c9a5993/go.mod h1:kvEh47ywen00njN0XWPWj2RDGa1CXDF13EjDjLiRojo=
 github.com/aurora-is-near/relayer2-base v1.1.2 h1:bmbB8SspwTXmAQFXzgNP1LTXe+QVjSlzV2bA0/Yz5Vw=
