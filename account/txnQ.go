@@ -63,7 +63,7 @@ func (q *TxnQ[T]) StartWorker(worker func(*T)) {
 				if data != nil {
 					worker(data)
 				}
-				if q.cancelCtx.Err() != nil {
+				if q.cancelCtx.Err() != nil || data == nil {
 					return
 				}
 			}
