@@ -11,6 +11,8 @@ import (
 	"github.com/aurora-is-near/relayer2-public/account"
 )
 
+const epochDurationToUseArchivalNode = 43200 // number of blocks in 1 epoch, ideally TODO: can be increased to 5 epoch but no big deal see https://docs.near.org/concepts/basics/epoch
+
 type EngineEth struct {
 	*endpoint.Endpoint
 	account *account.Account
@@ -60,7 +62,7 @@ func (e *EngineEth) getCode(ctx context.Context, address common.Address, bNumOrH
 	if err != nil {
 		return nil, err
 	}
-	return e.account.GetCode(address.Bytes(), bn.Int64())
+	return e.account.GetCode(address.Bytes(), bn.Int64(), e.shouldUseArchival(ctx, bn))
 }
 
 // GetBalance returns the balance of the account of given address
@@ -79,7 +81,7 @@ func (e *EngineEth) getBalance(ctx context.Context, address common.Address, bNum
 	if err != nil {
 		return nil, err
 	}
-	return e.account.GetBalance(address.Bytes(), bn.Int64())
+	return e.account.GetBalance(address.Bytes(), bn.Int64(), e.shouldUseArchival(ctx, bn))
 }
 
 // GetTransactionCount returns the number of transactions sent from an address
@@ -98,7 +100,7 @@ func (e *EngineEth) getTransactionCount(ctx context.Context, address common.Addr
 	if err != nil {
 		return nil, err
 	}
-	return e.account.GetTransactionCount(address.Bytes(), bn.Int64())
+	return e.account.GetTransactionCount(address.Bytes(), bn.Int64(), e.shouldUseArchival(ctx, bn))
 }
 
 // GetStorageAt returns the value from a storage position at a given address
@@ -121,7 +123,7 @@ func (e *EngineEth) getStorageAt(ctx context.Context, address common.Address, st
 	if err != nil {
 		return nil, err
 	}
-	return e.account.GetStorageAt(argsBuf, bn.Int64())
+	return e.account.GetStorageAt(argsBuf, bn.Int64(), e.shouldUseArchival(ctx, bn))
 }
 
 // Call executes a new message call immediately without creating a transaction on the blockchain
@@ -148,7 +150,7 @@ func (e *EngineEth) call(ctx context.Context, txs engine.TransactionForCall, bNu
 	if err != nil {
 		return nil, err
 	}
-	return e.account.Call(argsBuf, bn.Int64())
+	return e.account.Call(argsBuf, bn.Int64(), e.shouldUseArchival(ctx, bn))
 }
 
 // SendRawTransaction submits a raw transaction to engine either asynchronously or synchronously based on the configuration
@@ -188,6 +190,22 @@ func (e *EngineEth) blockNumberByNumberOrHash(ctx context.Context, bNumOrHash *c
 	}
 
 	return nil, errors.New("invalid arguments; neither block nor hash specified")
+}
+
+func (e *EngineEth) shouldUseArchival(ctx context.Context, bn *common.BN64) bool {
+	if *bn == common.LatestBlockNumber {
+		return false
+	}
+	blockHeight, err := e.DbHandler.BlockNumber(ctx)
+	if err != nil {
+		return true
+	}
+	bh := int64(*blockHeight)
+
+	if *bn.Int64() > bh-epochDurationToUseArchivalNode {
+		return false
+	}
+	return true
 }
 
 // formatGetStorageAtArgsForEngine gets input address and storage slot arguments

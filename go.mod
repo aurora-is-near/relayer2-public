@@ -2,7 +2,8 @@ module github.com/aurora-is-near/relayer2-public
 
 go 1.18
 
-//replace github.com/aurora-is-near/relayer2-base => ../relayer2-base
+replace github.com/aurora-is-near/relayer2-base => github.com/aurora-is-near/relayer2-base v1.1.3-0.20230914105446-42f23496919e
+
 replace github.com/aurora-is-near/near-api-go => github.com/aurora-is-near/near-api-go v0.0.13-0.20230829055300-6861f234540b
 
 // The following package had a conflicting dependency.
