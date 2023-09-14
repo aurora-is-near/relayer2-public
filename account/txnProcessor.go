@@ -171,6 +171,7 @@ func (tp *TxnProcessor) Submit(req *TxnReq) *TxnResp {
 // Close gracefully stops TxnProcessor, i.e.: waits for all received transactions to be completed.
 func (tp *TxnProcessor) Close() {
 
+	tp.logger.Info().Msg("stopping transaction processor...")
 	for _, q := range tp.unordered {
 		q.Close()
 	}
