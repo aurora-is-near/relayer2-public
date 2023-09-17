@@ -45,7 +45,7 @@ type nonceCache struct {
 
 // NewTxnProcessor creates and starts transaction processor which is responsible for sending received Eth transaction to
 // Near in a controlled fashion. Also see, TxnProcessor.Submit(*TxnReq)
-func NewTxnProcessor(config *endpoint.EngineConfig, account *near.Account) (*TxnProcessor, error) {
+func NewTxnProcessor(config *endpoint.EngineConfig, account *near.Account, archivalAccount *near.Account) (*TxnProcessor, error) {
 
 	var mapper TxnMapper
 	switch config.FunctionKeyMapper {
@@ -60,7 +60,7 @@ func NewTxnProcessor(config *endpoint.EngineConfig, account *near.Account) (*Txn
 		config:         config,
 		account:        account,
 		logger:         log.Log(),
-		keys:           account.GetVerifiedAccessKeys(),
+		keys:           archivalAccount.GetVerifiedAccessKeys(),
 		ethNonceCache:  make(map[string]*nonceCache),
 		nearNonceCache: make(map[string]*nonceCache),
 		ordered:        make([]*TxnQ[TxnReq], 0),
