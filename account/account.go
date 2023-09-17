@@ -64,7 +64,7 @@ func NewAccount(config *endpoint.EngineConfig) (*Account, error) {
 		return nil, fmt.Errorf("failed to load Near account from path: [%s]", nearCfg.KeyPath)
 	}
 
-	txnProcessor, err := NewTxnProcessor(config, nearAccount)
+	txnProcessor, err := NewTxnProcessor(config, nearAccount, nearArchivalAccount)
 	if err != nil {
 		return nil, err
 	}
