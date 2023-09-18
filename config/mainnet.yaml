@@ -20,7 +20,8 @@ endpoint:
   filterFilePath: config/filter.yaml
   engine:
     nearNetworkID: mainnet
-    nearNodeURL: https://archival-rpc.mainnet.near.org
+    nearArchivalNodeURL: https://archival-rpc.mainnet.near.org
+    nearNodeURL: http://142.132.133.160:23030
     signer:
     signerKey:
     functionKeyPrefixPattern: "fk*."
