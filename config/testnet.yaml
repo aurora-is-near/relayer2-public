@@ -21,7 +21,7 @@ endpoint:
   engine:
     nearNetworkID: testnet
     nearArchivalNodeURL: https://archival-rpc.testnet.near.org
-    nearNodeURL: https://archival-rpc.testnet.near.org
+    nearNodeURL: https://rpc.testnet.near.org
     signer:
     signerKey:
     functionKeyPrefixPattern: "fk*."

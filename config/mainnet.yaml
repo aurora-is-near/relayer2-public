@@ -21,7 +21,7 @@ endpoint:
   engine:
     nearNetworkID: mainnet
     nearArchivalNodeURL: https://archival-rpc.mainnet.near.org
-    nearNodeURL: http://142.132.133.160:23030
+    nearNodeURL: https://rpc.mainnet.near.org
     signer:
     signerKey:
     functionKeyPrefixPattern: "fk*."
