@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"syscall"
 	"time"
@@ -127,12 +128,7 @@ type rpcClient struct {
 }
 
 func newRPCClient(network string, address string, timeout time.Duration) (*rpcClient, error) {
-	c, err := net.Dial(network, address)
-	if err != nil {
-		log.Log().Warn().Err(err).Msgf("failed to set up socket connection. Will retry later")
-	}
 	return &rpcClient{
-		conn:    c,
 		network: network,
 		address: address,
 		timeout: timeout,
@@ -231,6 +227,10 @@ func (rc *rpcClient) EstimateGas(tx engine.TransactionForCall, number *common.BN
 }
 
 func (rc *rpcClient) reconnect() error {
+	_, err := os.Stat(rc.address)
+	if os.IsNotExist(err) {
+		return errors.New("socket connection to refiner is not available. Trying to reconnect. Please try again")
+	}
 	c, err := net.Dial(rc.network, rc.address)
 	if err != nil {
 		return errors.New("socket connection to refiner is not available. Trying to reconnect. Please try again")
