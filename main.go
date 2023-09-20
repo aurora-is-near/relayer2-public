@@ -54,10 +54,10 @@ func main() {
 		baseEndpoint := commonEndpoint.New(handler)
 		// order of processors are important
 		baseEndpoint.WithProcessor(processor.NewEnableDisable())
-		if p, err := standaloneproxy.New(); err == nil {
-			baseEndpoint.WithProcessor(p)
-			defer p.Close()
-		} else {
+		p, err := standaloneproxy.New()
+		baseEndpoint.WithProcessor(p)
+		defer p.Close()
+		if err != nil {
 			logger.Err(err).Msg("failed to set up standalone proxy")
 		}
 

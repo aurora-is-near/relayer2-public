@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/aurora-is-near/relayer2-base/cmdutils"
@@ -59,7 +60,7 @@ type StandaloneProxy struct {
 
 func New() (*StandaloneProxy, error) {
 	conf := GetConfig()
-	client, err := newRPCClient(conf.Address, conf.Timeout)
+	client, err := newRPCClient(conf.Network, conf.Address, conf.Timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -120,16 +121,20 @@ func (*StandaloneProxy) Post(ctx context.Context, _ string, _ *any, _ *error) co
 type rpcClient struct {
 	conn    net.Conn
 	lock    sync.Mutex
+	network string
+	address string
 	timeout time.Duration
 }
 
-func newRPCClient(address string, timeout time.Duration) (*rpcClient, error) {
-	c, err := net.Dial("unix", address)
+func newRPCClient(network string, address string, timeout time.Duration) (*rpcClient, error) {
+	c, err := net.Dial(network, address)
 	if err != nil {
-		return nil, err
+		log.Log().Warn().Err(err).Msgf("failed to set up socket connection. Will retry later")
 	}
 	return &rpcClient{
 		conn:    c,
+		network: network,
+		address: address,
 		timeout: timeout,
 	}, nil
 }
@@ -225,16 +230,35 @@ func (rc *rpcClient) EstimateGas(tx engine.TransactionForCall, number *common.BN
 	}
 }
 
+func (rc *rpcClient) reconnect() error {
+	c, err := net.Dial(rc.network, rc.address)
+	if err != nil {
+		return errors.New("socket connection to refiner is not available. Trying to reconnect. Please try again")
+	} else {
+		rc.conn = c
+		return nil
+	}
+}
+
 func (rc *rpcClient) request(req []byte) ([]byte, error) {
+	if rc.conn == nil {
+		if err := rc.reconnect(); err != nil {
+			return nil, err
+		}
+	}
 	rc.lock.Lock()
 	defer rc.lock.Unlock()
 	err := rc.conn.SetDeadline(time.Now().Add(rc.timeout))
 	if err != nil {
 		return nil, err
 	}
-
 	err = binary.Write(rc.conn, binary.LittleEndian, uint32(len(req)))
 	if err != nil {
+		if errors.Is(err, syscall.EPIPE) {
+			if err := rc.reconnect(); err != nil {
+				return nil, err
+			}
+		}
 		return nil, err
 	}
 
