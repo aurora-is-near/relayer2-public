@@ -136,6 +136,9 @@ func newRPCClient(network string, address string, timeout time.Duration) (*rpcCl
 }
 
 func (rc *rpcClient) Close() error {
+	if rc.conn == nil {
+		return nil
+	}
 	return rc.conn.Close()
 }
 
