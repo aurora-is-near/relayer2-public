@@ -25,3 +25,8 @@
 
 # Build artifacts
 **/out/*
+
+.DS_Store
+/data/
+/log/
+relayer2-public

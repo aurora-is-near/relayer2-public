@@ -50,10 +50,10 @@ github.com/aead/siphash v1.0.1/go.mod h1:Nywa3cDsYNNK3gaciGTWPwHt0wlpNV15vwmswBA
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=
 github.com/andybalholm/brotli v1.0.5/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
-github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1 h1:Nw9J9K7CksfVBa9uCVfvf1uAIQRhrNG677q8eH1gtVg=
-github.com/aurora-is-near/go-jsonrpc/v3 v3.1.1/go.mod h1:Li013EFlPu3crtlFQtWJAeE7VmdhSsxOpRoop1J0icw=
-github.com/aurora-is-near/near-api-go v0.0.13-0.20230914123406-69294cdd3ee3 h1:usIMPw53sTeke+223eKyr22r1w1WCxKnT+hs5CF6p0E=
-github.com/aurora-is-near/near-api-go v0.0.13-0.20230914123406-69294cdd3ee3/go.mod h1:u1KDIqjCl+g+Ndp8izReS5zXI05YWCgQR3iOYXhnhHI=
+github.com/aurora-is-near/go-jsonrpc/v3 v3.1.2 h1:GKX/ga2vElkJYHSIpWEGsW3Z5c0xFx6bnXkSsU30GXg=
+github.com/aurora-is-near/go-jsonrpc/v3 v3.1.2/go.mod h1:Li013EFlPu3crtlFQtWJAeE7VmdhSsxOpRoop1J0icw=
+github.com/aurora-is-near/near-api-go v0.0.13 h1:iIMlDIA/NqGS0D6j1TeP4DIdnyboifx2Y65UsJtUnBo=
+github.com/aurora-is-near/near-api-go v0.0.13/go.mod h1:k1fyeUePNSpC8VZTkbUaGbjMY8jexe4s5LffFejplyA=
 github.com/aurora-is-near/relayer2-base v1.1.3 h1:NNPzgopDXatKjf4MPNILtx81GHvPjXwo8NkvkRrgtuE=
 github.com/aurora-is-near/relayer2-base v1.1.3/go.mod h1:kvEh47ywen00njN0XWPWj2RDGa1CXDF13EjDjLiRojo=
 github.com/aurora-is-near/stream-backup v0.0.0-20221212013533-1e06e263c3f7 h1:aHMsjwM2KJ6EO9H7f1UgFD95c+d9BTpA43NQgZ6hiaM=
