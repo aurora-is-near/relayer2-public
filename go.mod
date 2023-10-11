@@ -3,16 +3,16 @@ module github.com/aurora-is-near/relayer2-public
 go 1.18
 
 //replace github.com/aurora-is-near/relayer2-base => github.com/aurora-is-near/relayer2-base v1.1.3-0.20230914105446-42f23496919e
-
-// replace github.com/aurora-is-near/near-api-go => /Users/spilin/sandbox/aurora/near-api-go
+//replace github.com/aurora-is-near/near-api-go => github.com/aurora-is-near/near-api-go
 
 // The following package had a conflicting dependency.
 // Fixed by pointing the dependency to the latest version tag.
 replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.2
 
 require (
-	github.com/aurora-is-near/near-api-go v0.0.13
+	github.com/aurora-is-near/near-api-go v0.0.14
 	github.com/aurora-is-near/relayer2-base v1.1.3
+	github.com/btcsuite/btcutil v1.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/ethereum/go-ethereum v1.10.25
 	github.com/google/uuid v1.3.0
@@ -30,7 +30,6 @@ require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/aurora-is-near/go-jsonrpc/v3 v3.1.2 // indirect
 	github.com/aurora-is-near/stream-backup v0.0.0-20221212013533-1e06e263c3f7 // indirect
-	github.com/btcsuite/btcutil v1.0.2 // indirect
 	github.com/carlmjohnson/versioninfo v0.22.4 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.2 // indirect

@@ -15,6 +15,7 @@ import (
 	"github.com/aurora-is-near/relayer2-base/indexer/tar"
 	"github.com/aurora-is-near/relayer2-base/log"
 	"github.com/aurora-is-near/relayer2-base/rpc/node"
+	publicCmd "github.com/aurora-is-near/relayer2-public/cmd"
 	"github.com/aurora-is-near/relayer2-public/endpoint"
 	"github.com/aurora-is-near/relayer2-public/indexer"
 	"github.com/aurora-is-near/relayer2-public/middleware"
@@ -28,6 +29,9 @@ import (
 func main() {
 	c := cmd.RootCmd()
 	c.AddCommand(cmd.VersionCmd())
+	c.AddCommand(publicCmd.AddKeysCmd())
+	c.AddCommand(publicCmd.DeleteKeysCmd())
+	c.AddCommand(publicCmd.GenerateKeysCmd())
 	c.AddCommand(cmd.StartCmd(func(cmd *cobra.Command, args []string) {
 		logger := log.Log()
 		bh, err := badger.NewBlockHandler()

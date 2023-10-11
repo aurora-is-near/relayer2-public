@@ -41,7 +41,79 @@ To be able to call `eth_sendRawTransaction`, you must have a NEAR account and
 signing key on the network you are relaying to, and said NEAR account must have
 a sufficient Ⓝ balance to be able to send transactions.
 
-To configure the signing account and private key:
+For those who prefer not to use personal accounts, a new signing key can be generated.
+
+#### Setting the Signer Key Location
+Ensure the signer key location is defined in the configuration file:
+Ex. :
+```yaml
+endpoint:
+  ...
+  engine:
+    ...
+    signerKey: config/relayer.json
+```
+
+#### Generating the Signer Key
+Execute the following command to generate a new signer key:
+
+```bash
+./relayer generate-key
+```
+
+> Note: The default configuration file used is config/testnet.yaml.
+
+Upon successful execution, a `relayer.json` file will be generated. An example of its structure is as follows:
+```json
+{
+  "account_id": "703f78e5355ae6fedf6384257a18e4cfb55bada321f6e7a35b1e21a3803b03e0",
+  "public_key": "ed25519:8ZAoFCzzj7FwADapMyRCctau295MpvKT5Y1z6cPySCko",
+  "secret_key": "ed25519:3j8Rxcnx6BcVvphxJpxKMJGWDfjTrSZTvDx7EdWm7L223dwkK8ZgebXieiadAZ3v5Xfg9AKx4XYsaPPcfmncFNo1"
+}
+```
+
+Update the configuration file's `signer` field with the `account_id` value from the generated `relayer.json` file:
+
+```yaml
+endpoint:
+  ...
+  engine:
+    ...
+    signer: 703f78e5355ae6fedf6384257a18e4cfb55bada321f6e7a35b1e21a3803b03e0
+    signerKey: config/relayer.json
+```
+
+#### Activating implicit account
+
+In the NEAR Protocol, implicit accounts require activation. This is achieved when a contract-based account or an externally-owned account transfers funds to the implicit account. This step is crucial as the signer account balance is utilized to cover the costs for `eth_sendRawTransaction`. Utilize any NEAR-compatible wallet or the [near send] command. Below is an example that transfers 0.5 NEAR to the generated account:
+
+```bash
+near send myaccount.near 703f78e5355ae6fedf6384257a18e4cfb55bada321f6e7a35b1e21a3803b03e0 0.5
+```
+
+### Handling Multiple Access Keys
+
+When dispatching multiple transactions concurrently, each signed by a different EOA, you may encounter the `ERR_INCORRECT_NONCE` error. The solution is for the relayer to use multiple access keys, signing each transaction with a distinct key.
+
+#### Generating Multiple Keys
+
+After [configuring and activating the access key](#configuring-a-signing-key), execute the following:
+
+```bash
+./relayer add-keys --config config/mainnet.yaml -n 100
+```
+
+This command generates 100 keys, storing them in the same directory as the `config/relayer.json` file. Upon restarting, the relayer will leverage these access keys for transaction signing.
+
+#### Removing Keys
+
+To delete these keys from the account, run:
+
+```bash
+./relayer delete-keys --config config/mainnet.yaml
+```
+
+You can also use ENV variables to configure the signing account and private key:
 
 #### Mainnet
 ```bash
@@ -299,6 +371,8 @@ using distribution project [Standalone Aurora Relayer and Refiner].
 [Configuration]: https://github.com/aurora-is-near/relayer2-public#how-to-configure
 [NEAR CLI]: https://docs.near.org/docs/tools/near-cli
 [Standalone Aurora Relayer and Refiner]: https://github.com/aurora-is-near/standalone-rpc
+
+[near send]: https://docs.near.org/tools/near-cli#near-send
 
 [`web3_clientVersion`]: https://docs.infura.io/infura/networks/ethereum/json-rpc-methods/web3_clientversion
 [`web3_sha3`]: https://openethereum.github.io/JSONRPC-web3-module#web3_sha3
