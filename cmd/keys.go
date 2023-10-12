@@ -50,6 +50,10 @@ func GenerateKeysCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := loadConfig()
 			key := newKey("")
+			if config.SignerKey == "" {
+				fmt.Println("signerKey is not set, please provide it in the config file")
+				os.Exit(1)
+			}
 			dumpJson(config.SignerKey, key)
 			fmt.Printf("key generated: [%s]", config.SignerKey)
 			return nil
