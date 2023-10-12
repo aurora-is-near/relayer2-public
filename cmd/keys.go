@@ -38,7 +38,7 @@ type Config struct {
 	NearConfig               near.Config
 }
 
-// GenerateKeysCmd generates a new key pair and attemots to save it to the file
+// GenerateKeysCmd generates a new key pair and attempts to save it to the file
 func GenerateKeysCmd() *cobra.Command {
 	generateKey := &cobra.Command{
 		Use:   "generate-key",
