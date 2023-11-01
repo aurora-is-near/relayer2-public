@@ -92,17 +92,20 @@ func (l *StandaloneProxy) Pre(ctx context.Context, name string, _ *endpoint.Endp
 
 	case "eth_estimateGas":
 		if len(args) != 2 {
-			return ctx, false, errors.New("invalid params")
+			return ctx, true, errors.New("invalid params")
 		}
 		tx, ok := args[0].(engine.TransactionForCall)
 		if !ok {
-			return ctx, false, errors.New("invalid params")
+			return ctx, true, errors.New("invalid params")
 		}
-		number, ok := args[1].(*common.BN64)
+		blockNumberOrHash, ok := args[1].(*common.BlockNumberOrHash)
 		if !ok {
-			return ctx, false, errors.New("invalid params")
+			return ctx, true, errors.New("invalid params")
 		}
-		res, err := l.client.EstimateGas(tx, number)
+		if blockNumberOrHash == nil {
+			return ctx, true, errors.New("string 'latest', 'earliest' or integer block number is required")
+		}
+		res, err := l.client.EstimateGas(tx, blockNumberOrHash.BlockNumber)
 		if err != nil {
 			return ctx, true, err
 		}
