@@ -11,7 +11,7 @@ replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.2
 
 require (
 	github.com/aurora-is-near/near-api-go v0.0.14
-	github.com/aurora-is-near/relayer2-base v1.1.3
+	github.com/aurora-is-near/relayer2-base v1.1.4
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/ethereum/go-ethereum v1.10.25
