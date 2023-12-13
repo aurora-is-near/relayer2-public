@@ -20,7 +20,7 @@ type EventsEth struct {
 	*endpoint.Endpoint
 	eventBroker broker.Broker
 	newHeadsCh  chan event.Block
-	logsCh      chan event.Logs
+	logsChMap   map[rpc.ID]chan event.Logs
 }
 
 func NewEventsEth(ep *endpoint.Endpoint, eb broker.Broker) *EventsEth {
@@ -28,7 +28,7 @@ func NewEventsEth(ep *endpoint.Endpoint, eb broker.Broker) *EventsEth {
 		Endpoint:    ep,
 		eventBroker: eb,
 		newHeadsCh:  make(chan event.Block, events.NewHeadsChSize),
-		logsCh:      make(chan event.Logs, events.LogsChSize),
+		logsChMap:   make(map[rpc.ID]chan event.Logs),
 	}
 }
 
@@ -65,15 +65,19 @@ func (e *EventsEth) Logs(ctx context.Context, subOpts request.LogSubscriptionOpt
 	rpcSub := notifier.CreateSubscription()
 
 	go func() {
-		logsSubs := e.eventBroker.SubscribeLogs(subOpts, e.logsCh)
+		logsCh := make(chan event.Logs, events.LogsChSize)
+		e.logsChMap[rpcSub.ID] = logsCh
+
+		logsSubs := e.eventBroker.SubscribeLogs(subOpts, logsCh)
 		for {
 			select {
-			case logs := <-e.logsCh:
+			case logs := <-logsCh:
 				for _, log := range logs {
 					notifier.Notify(rpcSub.ID, &log)
 				}
 			case <-rpcSub.Err():
 				e.eventBroker.UnsubscribeFromLogs(logsSubs)
+				delete(e.logsChMap, rpcSub.ID)
 				return
 			}
 		}
