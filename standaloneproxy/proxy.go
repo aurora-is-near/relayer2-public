@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -91,9 +92,6 @@ func (l *StandaloneProxy) Pre(ctx context.Context, name string, _ *endpoint.Endp
 		return ctx, true, nil
 
 	case "eth_estimateGas":
-		if len(args) != 2 {
-			return ctx, true, errors.New("invalid params")
-		}
 		tx, ok := args[0].(engine.TransactionForCall)
 		if !ok {
 			return ctx, true, errors.New("invalid params")
@@ -103,7 +101,8 @@ func (l *StandaloneProxy) Pre(ctx context.Context, name string, _ *endpoint.Endp
 			return ctx, true, errors.New("invalid params")
 		}
 		if blockNumberOrHash == nil {
-			return ctx, true, errors.New("string 'latest', 'earliest' or integer block number is required")
+			latest := common.LatestBlockNumber
+			blockNumberOrHash = &common.BlockNumberOrHash{BlockNumber: &latest}
 		}
 		res, err := l.client.EstimateGas(tx, blockNumberOrHash.BlockNumber)
 		if err != nil {
@@ -195,41 +194,61 @@ func (rc *rpcClient) TraceTransaction(hash common.H256) (*response.CallFrame, er
 }
 
 func (rc *rpcClient) EstimateGas(tx engine.TransactionForCall, number *common.BN64) (*common.Uint256, error) {
-	req, err := buildRequest("eth_estimateGas", tx, number)
+	var blockParam interface{} = number
+	switch *number {
+	case common.EarliestBlockNumber:
+		blockParam = "earliest"
+	case common.LatestBlockNumber:
+		blockParam = "latest"
+	case common.PendingBlockNumber:
+		blockParam = "pending"
+	}
+
+	req, err := buildRequest("eth_estimateGas", tx, blockParam)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to build request: %w", err)
 	}
 
 	res, err := rc.request(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 
+	return parseEstimateGasResponse(res)
+}
+
+func parseEstimateGasResponse(res []byte) (*common.Uint256, error) {
 	result, resultType, _, err := jsonparser.Get(res, "result")
-	if err != nil {
-		return nil, err
-	}
 
-	switch resultType {
-	case jsonparser.NotExist:
-		rpcErr, rpcErrType, _, err := jsonparser.Get(res, "error", "message")
-		switch {
-		case err != nil:
-			return nil, err
-		case rpcErrType == jsonparser.NotExist:
-			return nil, errors.New("internal rpc error")
-		default:
-			return nil, fmt.Errorf("%s", rpcErr)
+	if err == nil && resultType == jsonparser.Number {
+		val, err := strconv.ParseInt(string(result), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse result as integer: %w", err)
 		}
+		hexStr := fmt.Sprintf("0x%x", val)
 
-	case jsonparser.String:
 		resp := new(common.Uint256)
-		err := json.Unmarshal(result, resp)
-		return resp, err
-
-	default:
-		return nil, errors.New("failed to parse unexpected response")
+		if err := resp.UnmarshalJSON([]byte(hexStr)); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal result: %w", err)
+		}
+		return resp, nil
 	}
+
+	return handleEstimateGasError(res)
+}
+
+func handleEstimateGasError(res []byte) (*common.Uint256, error) {
+	rpcErrData, _, _, rpcErrDataParseErr := jsonparser.Get(res, "error", "data")
+	if rpcErrDataParseErr == nil && len(rpcErrData) > 0 {
+		return nil, fmt.Errorf("engine error: %s", rpcErrData)
+	}
+
+	rpcErrMsg, _, _, rpcErrMsgParseErr := jsonparser.Get(res, "error", "message")
+	if rpcErrMsgParseErr == nil && len(rpcErrMsg) > 0 {
+		return nil, fmt.Errorf("engine error: %s", rpcErrMsg)
+	}
+
+	return nil, errors.New("engine error: unknown error occurred")
 }
 
 func (rc *rpcClient) reconnect() error {
