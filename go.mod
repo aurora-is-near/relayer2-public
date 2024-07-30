@@ -2,7 +2,7 @@ module github.com/aurora-is-near/relayer2-public
 
 go 1.18
 
-//replace github.com/aurora-is-near/relayer2-base => github.com/aurora-is-near/relayer2-base v1.1.3-0.20230914105446-42f23496919e
+//replace github.com/aurora-is-near/relayer2-base => "../relayer2-base"
 //replace github.com/aurora-is-near/near-api-go => github.com/aurora-is-near/near-api-go
 
 // The following package had a conflicting dependency.
@@ -11,7 +11,7 @@ replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.2
 
 require (
 	github.com/aurora-is-near/near-api-go v0.0.14
-	github.com/aurora-is-near/relayer2-base v1.1.5
+	github.com/aurora-is-near/relayer2-base v1.1.7
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/ethereum/go-ethereum v1.10.25

@@ -32,6 +32,8 @@ func main() {
 	c.AddCommand(publicCmd.AddKeysCmd())
 	c.AddCommand(publicCmd.DeleteKeysCmd())
 	c.AddCommand(publicCmd.GenerateKeysCmd())
+	c.AddCommand(cmd.GetBlockCmd())
+	c.AddCommand(cmd.FlattenDB())
 	c.AddCommand(cmd.StartCmd(func(cmd *cobra.Command, args []string) {
 		logger := log.Log()
 		bh, err := badger.NewBlockHandler()
