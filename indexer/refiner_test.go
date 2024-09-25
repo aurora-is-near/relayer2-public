@@ -263,7 +263,7 @@ func TestConfiguration(t *testing.T) {
 				args[0].(*db.StoreHandler).Close()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				return i.c.FromBlock, err
 			},
 			want:        uint64(DefaultGenesisBlock),
@@ -283,7 +283,7 @@ func TestConfiguration(t *testing.T) {
 				args[0].(*db.StoreHandler).Close()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				return New(args[0].(*db.StoreHandler))
+				return NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 			},
 			want:        nil,
 			errContains: "invalid config",
@@ -303,7 +303,7 @@ func TestConfiguration(t *testing.T) {
 				args[0].(*db.StoreHandler).Close()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				return i.c.FromBlock, err
 			},
 			want:        uint64(DefaultGenesisBlock+numBlocksToInsert) + 1,
@@ -324,7 +324,7 @@ func TestConfiguration(t *testing.T) {
 				args[0].(*db.StoreHandler).Close()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				return i.c.FromBlock, err
 			},
 			want:        uint64(DefaultGenesisBlock),
@@ -356,7 +356,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				r := read
 				for n := uint8(0); n < i.c.RetryCountOnFailure+1; n++ {
 					r = r(i)
@@ -382,7 +382,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				r := read
 				for n := uint8(0); n < i.c.RetryCountOnFailure+1; n++ {
 					r = r(i)
@@ -408,7 +408,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				return nameOfFunc(read(i)), err
 			},
 			want:        nameOfFunc(insert),
@@ -430,7 +430,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				r := read(i)
 				r = r(i)
 				return nameOfFunc(r), err
@@ -454,7 +454,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				r := read(i)
 				r = r(i)
 				r = r(i)
@@ -479,7 +479,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				r := read(i)
 				r = r(i)
 				r = r(i)
@@ -504,7 +504,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				i.s.filePath = "invalid"
 				r := removeFile
 				for n := uint8(0); n < i.c.RetryCountOnFailure+1; n++ {
@@ -531,7 +531,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				return nameOfFunc(removeFile(i)), err
 			},
 			want:        nameOfFunc(increment),
@@ -553,7 +553,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				removeFile(i)
 				increment(i)
 				i.s.currBlock = i.s.subBlock + i.s.batchSize - 1
@@ -578,7 +578,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				i.s.currBlock = i.s.subBlock + i.s.batchSize - 1
 				return nameOfFunc(removeFile(i)), err
 			},
@@ -601,7 +601,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				removeFile(i)
 				increment(i)
 				removeFile(i)
@@ -626,7 +626,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				i.s.subBlockPath = "invalid"
 				r := removeFolder
 				for n := uint8(0); n < i.c.RetryCountOnFailure+1; n++ {
@@ -653,7 +653,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				return nameOfFunc(increment(i)), err
 			},
 			want:        nameOfFunc(read),
@@ -675,7 +675,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				increment(i)
 				return nameOfFunc(increment(i)), err
 			},
@@ -699,7 +699,7 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				i, err := NewIndexerRefiner(args[0].(*db.StoreHandler), nil)
 				increment(i)
 				return nameOfFunc(increment(i)), err
 			},
