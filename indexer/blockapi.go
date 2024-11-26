@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"time"
 
 	blocksapi "github.com/aurora-is-near/borealis-prototypes-go/generated/blocksapi"
 	"github.com/aurora-is-near/relayer2-base/broker"
@@ -22,6 +23,8 @@ import (
 	_ "google.golang.org/grpc/encoding/proto"
 	"google.golang.org/grpc/metadata"
 )
+
+const logTickerDuration = 5 * time.Second
 
 type IndexerBlocksAPI struct {
 	token  string
@@ -100,10 +103,29 @@ func (i *IndexerBlocksAPI) run(callCtx context.Context) {
 
 	defer callClient.CloseSend()
 
+	logTicker := time.NewTicker(logTickerDuration)
+	var lastSpeedLogTime = time.Now()
+	var msgsSinceLastSpeedLog uint64 = 0
+	var bytesSinceLastSpeedLog uint64 = 0
+
 	for {
 		select {
 		case <-callCtx.Done():
+			logTicker.Stop()
 			return
+		case now := <-logTicker.C:
+			timeDiff := time.Since(lastSpeedLogTime)
+			msgsSpeed := float64(msgsSinceLastSpeedLog) / timeDiff.Seconds()
+			mbSpeed := float64(bytesSinceLastSpeedLog) / timeDiff.Seconds() / 1024 / 1024
+
+			i.l.Info().
+				Float64("mps", msgsSpeed).
+				Float64("mbps", mbSpeed).
+				Msg("Indexing speed")
+
+			lastSpeedLogTime = now
+			msgsSinceLastSpeedLog = 0
+			bytesSinceLastSpeedLog = 0
 		default:
 		}
 
@@ -159,6 +181,9 @@ func (i *IndexerBlocksAPI) run(callCtx context.Context) {
 			}
 
 			i.nextHeight += 1
+
+			msgsSinceLastSpeedLog++
+			bytesSinceLastSpeedLog += uint64(len(payload))
 		default:
 			i.l.Warn().Msg("Unknown type")
 		}
