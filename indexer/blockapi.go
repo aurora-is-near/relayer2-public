@@ -3,7 +3,6 @@ package indexer
 import (
 	"context"
 	"errors"
-	"io"
 	"sync"
 	"time"
 
@@ -30,12 +29,15 @@ type IndexerBlocksAPI struct {
 	token  string
 	stream string
 
-	dbh        db.Handler
-	l          *log.Logger
-	b          broker.Broker
-	grpc       *grpc.ClientConn
-	nextHeight uint64
-	mu         sync.Mutex
+	dbh          db.Handler
+	l            *log.Logger
+	config       *Config
+	b            broker.Broker
+	grpc         *grpc.ClientConn
+	nextHeight   uint64
+	mu           sync.Mutex
+	cancelRunCtx context.CancelFunc
+	wg           sync.WaitGroup
 }
 
 func init() {
@@ -63,6 +65,7 @@ func NewIndexerBlocksApi(config *Config, dbh db.Handler, b broker.Broker) (*Inde
 		token:      config.BlocksApiToken,
 		dbh:        dbh,
 		l:          logger,
+		config:     config,
 		b:          b,
 		grpc:       client,
 		nextHeight: config.FromBlock,
@@ -77,12 +80,39 @@ func (i *IndexerBlocksAPI) Start(ctx context.Context) {
 	md := metadata.New(make(map[string]string))
 	md.Set("authorization", "Bearer "+i.token)
 
-	callCtx := metadata.NewOutgoingContext(ctx, md)
+	runCtx, cancel := context.WithCancel(ctx)
+	callCtx := metadata.NewOutgoingContext(runCtx, md)
 
-	go i.run(callCtx)
+	i.cancelRunCtx = cancel
+	i.wg.Add(1)
+
+	go func() {
+		defer i.wg.Done()
+
+		for {
+			if err := i.run(callCtx); err != nil {
+				// If there's an error, we wait a bit before trying again, or
+				// until context is closed
+				select {
+				case <-callCtx.Done():
+					return
+				case <-time.After(time.Second):
+					continue
+				}
+			}
+
+			if !i.config.ForceReindex && i.config.ToBlock != 0 {
+				// We're done
+				return
+			} else {
+				// We reached the target block, but we want to keep going
+				i.config.ToBlock = 0
+			}
+		}
+	}()
 }
 
-func (i *IndexerBlocksAPI) run(callCtx context.Context) {
+func (i *IndexerBlocksAPI) run(callCtx context.Context) error {
 	blocksProviderClient := blocksapi.NewBlocksProviderClient(i.grpc)
 
 	request := &blocksapi.ReceiveBlocksRequest{
@@ -95,10 +125,18 @@ func (i *IndexerBlocksAPI) run(callCtx context.Context) {
 		},
 	}
 
+	if i.config.ToBlock > 0 {
+		request.StopPolicy = blocksapi.ReceiveBlocksRequest_STOP_AFTER_TARGET
+		request.StopTarget = &blocksapi.BlockMessage_ID{
+			Kind:   blocksapi.BlockMessage_MSG_WHOLE,
+			Height: i.config.ToBlock,
+		}
+	}
+
 	callClient, err := blocksProviderClient.ReceiveBlocks(callCtx, request)
 	if err != nil {
 		i.l.Error().Err(err).Msgf("unable to call ReceiveBlocks")
-		return
+		return err
 	}
 
 	defer callClient.CloseSend()
@@ -112,7 +150,7 @@ func (i *IndexerBlocksAPI) run(callCtx context.Context) {
 		select {
 		case <-callCtx.Done():
 			logTicker.Stop()
-			return
+			return nil
 		case now := <-logTicker.C:
 			timeDiff := time.Since(lastSpeedLogTime)
 			msgsSpeed := float64(msgsSinceLastSpeedLog) / timeDiff.Seconds()
@@ -130,33 +168,35 @@ func (i *IndexerBlocksAPI) run(callCtx context.Context) {
 		}
 
 		response, err := callClient.Recv()
-		if errors.Is(err, io.EOF) {
-			break
-		} else if err != nil {
+		if err != nil {
 			i.l.Error().Err(err).Msg("unable to receive next response")
-			return
+			return err
 		}
 
 		switch r := response.Response.(type) {
 		case *blocksapi.ReceiveBlocksResponse_Error_:
 			i.l.Warn().Msgf("Got gRPC error: %v", r)
+			return errors.New(r.Error.Description)
+		case *blocksapi.ReceiveBlocksResponse_Done_:
+			i.l.Info().Msg("Target block reached")
+			return nil
 		case *blocksapi.ReceiveBlocksResponse_Message:
 			payload := r.Message.Message.GetRawPayload()
 			if payload == nil {
 				i.l.Fatal().Msg("invalid payload type")
-				return
+				return err
 			}
 
 			block, err := DecodeBorealisPayload[indexer.Block](payload)
 			if err != nil {
 				i.l.Fatal().Err(err).Msg("couln't parse block")
-				return
+				return err
 			}
 
 			err = i.dbh.InsertBlock(block)
 			if err != nil {
 				i.l.Fatal().Err(err).Msg("couln't insert block")
-				return
+				return err
 			}
 
 			if i.b != nil {
@@ -191,6 +231,9 @@ func (i *IndexerBlocksAPI) run(callCtx context.Context) {
 }
 
 func (i *IndexerBlocksAPI) Close() {
+	i.cancelRunCtx()
+	i.wg.Wait()
+
 	if err := i.grpc.Close(); err != nil {
 		log.Log().Printf("Unable to close connection: %v", err)
 	}
