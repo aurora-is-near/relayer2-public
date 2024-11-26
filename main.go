@@ -141,7 +141,7 @@ func main() {
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed to start indexer")
 		}
-	
+
 		indxr.Start(ctx)
 		defer indxr.Close()
 

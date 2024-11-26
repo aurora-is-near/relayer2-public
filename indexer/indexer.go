@@ -97,6 +97,8 @@ func New(dbh db.Handler, b broker.Broker) (Indexer, error) {
 
 	// validate & normalise config
 	fromBlockUpdated := false
+	cfgFromBlockOrigin := config.FromBlock
+	fromBlock := config.GenesisBlock
 
 	if !config.ForceReindex {
 		lb, err := dbh.BlockNumber(context.Background())
@@ -108,14 +110,19 @@ func New(dbh db.Handler, b broker.Broker) (Indexer, error) {
 			if bn >= config.GenesisBlock {
 				logger.Warn().Msgf("overwriting fromBlock: [%d] as [%d]", config.FromBlock, bn+1)
 
-				config.FromBlock = bn + 1
+				fromBlock = bn + 1
 				fromBlockUpdated = true
 			}
 		}
 	}
 
+	if config.FromBlock < fromBlock {
+		logger.Warn().Msgf("overwriting fromBlock: [%d] as [%d]", config.FromBlock, fromBlock)
+		config.FromBlock = fromBlock
+	}
+
 	if (config.ToBlock > DefaultToBlock) && (config.ToBlock <= config.FromBlock) {
-		if fromBlockUpdated && (config.FromBlock < config.ToBlock) {
+		if fromBlockUpdated && (cfgFromBlockOrigin < config.ToBlock) {
 			return nil, fmt.Errorf("given block range is already indexed till [%d]. Please either enable `forceReindex` config to re-index or update the range and re-start the application", config.FromBlock)
 		} else {
 			return nil, fmt.Errorf("invalid config, toBlock: [%d] must be greater than fromBlock: [%d]", config.ToBlock, config.FromBlock)
