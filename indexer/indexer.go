@@ -46,9 +46,9 @@ type Config struct {
 	WaitForBlockMs      uint16 `mapstructure:"waitForBlockMs"`
 
 	// BlocksApi source specific
-	BlocksApiUrl   []string `mapstructure:"blocksApiUrl"`
-	BlocksApiStream string   `mapstructure:"blocApiToken"`
-	BlocksApiToken string   `mapstructure:"blocApiToken"`
+	BlocksApiUrl    []string `mapstructure:"blocksApiUrl"`
+	BlocksApiStream string   `mapstructure:"blocksApiStream"`
+	BlocksApiToken  string   `mapstructure:"blocksApiToken"`
 }
 
 func defaultConfig() *Config {

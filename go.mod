@@ -18,6 +18,7 @@ require (
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/ethereum/go-ethereum v1.10.25
+	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/google/uuid v1.6.0
 	github.com/json-iterator/go v1.1.12
 	github.com/planetscale/vtprotobuf v0.6.0
@@ -40,7 +41,6 @@ require (
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fasthttp/websocket v1.5.2 // indirect
-	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.2.1 // indirect

@@ -14,7 +14,6 @@ import (
 	"github.com/aurora-is-near/relayer2-base/types/common"
 	"github.com/aurora-is-near/relayer2-base/types/indexer"
 	"github.com/aurora-is-near/relayer2-base/utils"
-	jsoniter "github.com/json-iterator/go"
 
 	vtgrpc "github.com/planetscale/vtprotobuf/codec/grpc"
 	"google.golang.org/grpc"
@@ -28,12 +27,12 @@ type IndexerBlocksAPI struct {
 	token  string
 	stream string
 
-	dbh    db.Handler
-	l      *log.Logger
-	b      broker.Broker
-	grpc   *grpc.ClientConn
+	dbh        db.Handler
+	l          *log.Logger
+	b          broker.Broker
+	grpc       *grpc.ClientConn
 	nextHeight uint64
-	mu     sync.Mutex
+	mu         sync.Mutex
 }
 
 func init() {
@@ -57,12 +56,12 @@ func NewIndexerBlocksApi(config *Config, dbh db.Handler, b broker.Broker) (*Inde
 	}
 
 	return &IndexerBlocksAPI{
-		stream: config.BlocksApiStream,
-		token:  config.BlocksApiToken,
-		dbh:    dbh,
-		l:      logger,
-		b:      b,
-		grpc:   client,
+		stream:     config.BlocksApiStream,
+		token:      config.BlocksApiToken,
+		dbh:        dbh,
+		l:          logger,
+		b:          b,
+		grpc:       client,
 		nextHeight: config.FromBlock,
 	}, nil
 }
@@ -117,22 +116,22 @@ func (i *IndexerBlocksAPI) run(callCtx context.Context) {
 		}
 
 		switch r := response.Response.(type) {
+		case *blocksapi.ReceiveBlocksResponse_Error_:
+			i.l.Warn().Msgf("Got gRPC error: %v", r)
 		case *blocksapi.ReceiveBlocksResponse_Message:
-			var block indexer.Block
-
 			payload := r.Message.Message.GetRawPayload()
 			if payload == nil {
 				i.l.Fatal().Msg("invalid payload type")
 				return
 			}
 
-			err = jsoniter.Unmarshal(payload, &block)
+			block, err := DecodeBorealisPayload[indexer.Block](payload)
 			if err != nil {
 				i.l.Fatal().Err(err).Msg("couln't parse block")
 				return
 			}
 
-			err := i.dbh.InsertBlock(&block)
+			err = i.dbh.InsertBlock(block)
 			if err != nil {
 				i.l.Fatal().Err(err).Msg("couln't insert block")
 				return
@@ -160,6 +159,8 @@ func (i *IndexerBlocksAPI) run(callCtx context.Context) {
 			}
 
 			i.nextHeight += 1
+		default:
+			i.l.Warn().Msg("Unknown type")
 		}
 	}
 }
