@@ -103,11 +103,27 @@ func (i *IndexerBlocksAPI) Start(ctx context.Context) {
 
 			if !i.config.ForceReindex && i.config.ToBlock != 0 {
 				// We're done
+				i.l.Info().Msg("Indexer is done")
 				return
-			} else {
-				// We reached the target block, but we want to keep going
-				i.config.ToBlock = 0
 			}
+
+			lb, err := i.dbh.BlockNumber(context.Background())
+			if err != nil || lb == nil {
+				i.l.Fatal().Err(err).
+					Msg("Failed to read the latest block after re-indexing")
+				return
+			}
+
+			fb := uint64(*lb)
+			i.l.Info().
+				Uint64("from_block", i.config.FromBlock).
+				Uint64("to_block", i.config.ToBlock).
+				Uint64("cur_block", fb).
+				Msg("Re-indexing finished, indexing will continue from current block")
+
+			// We reached the target block, but we want to keep going
+			i.config.ToBlock = 0
+			i.nextHeight = fb
 		}
 	}()
 }
