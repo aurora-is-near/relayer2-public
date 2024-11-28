@@ -771,15 +771,15 @@ func insertBlocks(sh *db.StoreHandler) {
 	block := &indexer.Block{
 		ChainId:          1313161554,
 		Height:           DefaultGenesisBlock,
-		Hash:             primitives.Data32FromHex("0x0"),
-		ParentHash:       primitives.Data32FromHex("0x0"),
-		TransactionsRoot: primitives.Data32FromHex("0x0"),
-		ReceiptsRoot:     primitives.Data32FromHex("0x0"),
-		StateRoot:        primitives.Data32FromHex("0x0"),
-		Miner:            primitives.Data20FromHex("0x0"),
+		Hash:             primitives.MustData32FromHex("0x0"),
+		ParentHash:       primitives.MustData32FromHex("0x0"),
+		TransactionsRoot: primitives.MustData32FromHex("0x0"),
+		ReceiptsRoot:     primitives.MustData32FromHex("0x0"),
+		StateRoot:        primitives.MustData32FromHex("0x0"),
+		Miner:            primitives.MustData20FromHex("0x0"),
 		GasLimit:         primitives.QuantityFromHex("0x0"),
 		GasUsed:          primitives.QuantityFromHex("0x0"),
-		LogsBloom:        primitives.Data256FromHex("0x0"),
+		LogsBloom:        primitives.MustData256FromHex("0x0"),
 	}
 
 	for i := 0; i < numBlocksToInsert; i++ {
