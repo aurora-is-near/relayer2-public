@@ -14,7 +14,7 @@ replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.2
 require (
 	github.com/aurora-is-near/borealis-prototypes-go v0.0.0-20240612174445-a1ca8d036252
 	github.com/aurora-is-near/near-api-go v0.0.14
-	github.com/aurora-is-near/relayer2-base v1.1.7
+	github.com/aurora-is-near/relayer2-base v1.1.8
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/ethereum/go-ethereum v1.10.25
