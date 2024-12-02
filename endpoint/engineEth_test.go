@@ -40,7 +40,7 @@ const (
 	contractCallTestOOOMethodData = "0xbb29998e000000000000000000000000f53cC0ef22a093436bb53478b6b3fa8922264a70" // 4 bytes of test methods keccak256 signature -> "test(address)" + address 0xF53cC0eF22a093436BB53478b6B3FA8922264a70 (complete it to 32 bytes)
 
 	txsInvalidNonceStr   = "0xf86d8202fe80825208949d9bd1909550cb8beed9ce7b291dc4dacd85d39d888ac7230489e8000080849c8a82c9a0f17bc4738b358e045850ede1ee86afd8b4cdc58789eda6bf5fe12d2b364e0816a00787a98813e68a58ddcef2cd0b2dd5b90785c32726baa27d3b13e9da299a28cf"
-	txsInvalidRawDataStr = "0xf86d8202fe80825208949d9bd1909550cb8beed9ce7b291dc4dacd85d39d888ac7230489e8000080849c8a82c9a0f17bc4738b358e045850ede1ee86afd8b4cdc58789eda6bf5fe12d2b364e0816a00787a98813e68a58ddcef2cd0b2dd5b90785c32726baa27d3b13e9da299"
+	txsInvalidRawDataStr = "0xf86d8202fe80825208949d9bd1909550cb8beed9ce7b291dc4dacd85d39d888ac7230489e8000080849c8a82c9a0f17bc4738b358e045850ede1ee86afd8b4cdc58789eda6bf5fe12d2b364e0816a00787a98813e68a58ddcef2cd0b2dd5b90785c32726baa27d3b13e9da2990"
 	txsLowGasPriceStr    = "0xf86a820315808259d8949d9bd1909550cb8beed9ce7b291dc4dacd85d39d85e8d4a5100080849c8a82caa09b3661dbc1cdc757d0f566c96e08718033196ef6293962b0a28199494331ba9fa0287398e2db4c3ff130f7beafbcd1ad763df70549724b14db8686fbcf2639b699"
 	txsLowGasLimitStr    = "0xf8688203158064949d9bd1909550cb8beed9ce7b291dc4dacd85d39d85e8d4a5100080849c8a82caa02e3db9cf6ca6ef9f164ff537f1894e2fe981c4b65e29bf899da2a08f1fac5df4a023957b8b64c799da9161f47bee9d1b72cb55e5663b54b1b6190f3485c652dd76"
 	timeoutSec           = 60
@@ -143,24 +143,24 @@ func TestMain(m *testing.M) {
 	engineNet = NewEngineNet(engineEth)
 
 	// Create from, to, and contract addresses to use in the tests
-	fromAddr = common.HexStringToAddress(fromAddress)
-	toAddr = common.HexStringToAddress(toAddress)
+	fromAddr = common.MustHexStringToAddress(fromAddress)
+	toAddr = common.MustHexStringToAddress(toAddress)
 	gasZero = common.IntToUint256(0)
 	transferVal = common.IntToUint256(transferValue)
 	transferValOOF = common.IntToUint256(transferValueOOF)
-	contractAddr = common.HexStringToAddress(contractAddress)
-	contractAddrStackOverFlow = common.HexStringToAddress(contractAddressStackOverFlow)
-	contractAddrCallTooDeep = common.HexStringToAddress(contractAddressCallTooDeep)
-	contractAddrOutOfOffset = common.HexStringToAddress(contractAddressOutOfOffset)
+	contractAddr = common.MustHexStringToAddress(contractAddress)
+	contractAddrStackOverFlow = common.MustHexStringToAddress(contractAddressStackOverFlow)
+	contractAddrCallTooDeep = common.MustHexStringToAddress(contractAddressCallTooDeep)
+	contractAddrOutOfOffset = common.MustHexStringToAddress(contractAddressOutOfOffset)
 
-	contractData = common.HexStringToDataVec(contractCheckMethodData)
-	contractDataStackOverFlow = common.HexStringToDataVec(contractCallToDeepMethodData)
-	contractDataCallTooDeep = common.HexStringToDataVec(contractCallTestMethodData)
-	contractDataOutOfOffset = common.HexStringToDataVec(contractCallTestOOOMethodData)
-	txsInvalidNonce = common.HexStringToDataVec(txsInvalidNonceStr)
-	txsInvalidRawData = common.HexStringToDataVec(txsInvalidRawDataStr)
-	txsLowGasLimit = common.HexStringToDataVec(txsLowGasLimitStr)
-	txsLowGasPrice = common.HexStringToDataVec(txsLowGasPriceStr)
+	contractData = common.MustHexStringToDataVec(contractCheckMethodData)
+	contractDataStackOverFlow = common.MustHexStringToDataVec(contractCallToDeepMethodData)
+	contractDataCallTooDeep = common.MustHexStringToDataVec(contractCallTestMethodData)
+	contractDataOutOfOffset = common.MustHexStringToDataVec(contractCallTestOOOMethodData)
+	txsInvalidNonce = common.MustHexStringToDataVec(txsInvalidNonceStr)
+	txsInvalidRawData = common.MustHexStringToDataVec(txsInvalidRawDataStr)
+	txsLowGasLimit = common.MustHexStringToDataVec(txsLowGasLimitStr)
+	txsLowGasPrice = common.MustHexStringToDataVec(txsLowGasPriceStr)
 
 	// If no default provided user the random generated addresses
 	if fromAddr.Hex() == zeroAddress {
