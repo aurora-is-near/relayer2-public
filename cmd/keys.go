@@ -47,18 +47,14 @@ func GenerateKeysCmd() *cobra.Command {
 		Use:   "generate-key",
 		Short: "Command to generate signer key pair",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if accountID == "" {
+			if accountID == "" && outputPath == "" {
 				return bindConfiguration(cmd)
 			}
 			return nil
 		},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if accountID != "" {
-				if outputPath == "" {
-					fmt.Println("Please provide output path using --output flag")
-					os.Exit(1)
-				}
+			if outputPath != "" {
 				key := newKey(accountID)
 				dumpJson(outputPath, key)
 				fmt.Printf("key generated: [%s]", outputPath)
