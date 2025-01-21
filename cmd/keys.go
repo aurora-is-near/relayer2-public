@@ -40,25 +40,45 @@ type Config struct {
 
 // GenerateKeysCmd generates a new key pair and attempts to save it to the file
 func GenerateKeysCmd() *cobra.Command {
+	var accountID string
+	var outputPath string
+
 	generateKey := &cobra.Command{
 		Use:   "generate-key",
 		Short: "Command to generate signer key pair",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return bindConfiguration(cmd)
+			if accountID == "" {
+				return bindConfiguration(cmd)
+			}
+			return nil
 		},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if accountID != "" {
+				if outputPath == "" {
+					fmt.Println("Please provide output path using --output flag")
+					os.Exit(1)
+				}
+				key := newKey(accountID)
+				dumpJson(outputPath, key)
+				fmt.Printf("key generated: [%s]", outputPath)
+				return nil
+			}
+
 			config := loadConfig()
-			key := newKey("")
 			if config.SignerKey == "" {
 				fmt.Println("signerKey is not set, please provide it in the config file")
 				os.Exit(1)
 			}
+			key := newKey("")
 			dumpJson(config.SignerKey, key)
 			fmt.Printf("key generated: [%s]", config.SignerKey)
 			return nil
 		},
 	}
+
+	generateKey.Flags().StringVar(&accountID, "account-id", "", "Account ID to generate key for")
+	generateKey.Flags().StringVar(&outputPath, "output", "", "Output path for the generated key when using --account-id")
 	acceptConfigFilePath(generateKey)
 	return generateKey
 }
