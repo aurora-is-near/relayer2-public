@@ -146,6 +146,36 @@ for detailed explanation and flags of each command see help
 
 ## How To Configure
 
+### Data Source Options
+
+The relayer supports multiple data source options for indexing:
+
+1. **nearcore** (default) - Indexes directly from a local NEAR node
+2. **datalake** - Uses NEAR Data Lake for indexing
+3. **blocksAPI** - Uses Aurora's dedicated blocks stream service (mainnet only)
+
+#### Using blocksAPI
+
+For mainnet deployments, there's an option to use blocksAPI as an alternative to nearcore/datalake data sources. This service:
+- Provides a dedicated stream of block data hosted by Aurora Labs
+- Similar to NEAR Data Lake but optimized for Aurora use cases
+- Currently in beta testing and available free of charge
+- Requires API token and credentials
+
+To use blocksAPI:
+1. Contact the Aurora team to request API access credentials
+2. Configure the following in your config file:
+```yaml
+indexer:
+  source: blocksApi
+  blocksApiUrl: "your-provided-url"
+  blocksApiStream: "your-stream-name"
+  blocksApiToken: "your-api-token"
+```
+
+> **Note**: The blocksAPI service is currently in beta testing. Please contact the Aurora team for access and the latest documentation.
+
+### Configuration Options
 
 | Config Name                                   | Environment Variable Name <br/>(prefix AURORA_RELAYER_) | Default                                      | Runtime Change | Description                                                                                                                                         |
 |-----------------------------------------------|---------------------------------------------------------|----------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
