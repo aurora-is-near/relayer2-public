@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -35,6 +36,9 @@ func main() {
 	c.AddCommand(cmd.GetBlockCmd())
 	c.AddCommand(cmd.FlattenDB())
 	c.AddCommand(cmd.StartCmd(func(cmd *cobra.Command, args []string) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel() // graceful interrupt net requests and io
+
 		logger := log.Log()
 		bh, err := badger.NewBlockHandler()
 		if err != nil {
@@ -133,16 +137,12 @@ func main() {
 			defer tarIndexer.Close()
 		}
 
-		var indxr *indexer.Indexer
-		if rpcNode.Broker != nil {
-			indxr, err = indexer.NewWithBroker(handler, rpcNode.Broker)
-		} else {
-			indxr, err = indexer.New(handler)
-		}
+		indxr, err := indexer.New(handler, rpcNode.Broker)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed to start indexer")
 		}
-		indxr.Start()
+
+		indxr.Start(ctx)
 		defer indxr.Close()
 
 		preIndxr, err := prehistory.New(handler)
@@ -160,7 +160,9 @@ func main() {
 			baseEndpoint.HandleConfigChange()
 		})
 
-		sig := make(chan os.Signal)
+		// We must use a buffered channel or risk missing the signal
+		// if we're not ready to receive when the signal is sent.
+		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
 	}))

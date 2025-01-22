@@ -23,18 +23,18 @@ func TestBuildRequest(t *testing.T) {
 		{
 			method: "foobar",
 			params: []any{
-				primitives.Data32FromHex("0x1"),
+				primitives.MustData32FromHex("0x1"),
 			},
-			want: `{"id":1,"jsonrpc":"2.0","method":"foobar","params":["0x0100000000000000000000000000000000000000000000000000000000000000"]}`,
+			want: `{"id":1,"jsonrpc":"2.0","method":"foobar","params":["0x0000000000000000000000000000000000000000000000000000000000000001"]}`,
 		},
 		{
 			method: "foobar",
 			params: []any{
-				primitives.Data32FromHex("0x1"),
-				primitives.Data32FromHex("0x2"),
-				primitives.Data32FromHex("0x3"),
+				primitives.MustData32FromHex("0x1"),
+				primitives.MustData32FromHex("0x2"),
+				primitives.MustData32FromHex("0x3"),
 			},
-			want: `{"id":1,"jsonrpc":"2.0","method":"foobar","params":["0x0100000000000000000000000000000000000000000000000000000000000000","0x0200000000000000000000000000000000000000000000000000000000000000","0x0300000000000000000000000000000000000000000000000000000000000000"]}`,
+			want: `{"id":1,"jsonrpc":"2.0","method":"foobar","params":["0x0000000000000000000000000000000000000000000000000000000000000001","0x0000000000000000000000000000000000000000000000000000000000000002","0x0000000000000000000000000000000000000000000000000000000000000003"]}`,
 		},
 	}
 

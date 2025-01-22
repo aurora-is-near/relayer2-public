@@ -1,6 +1,8 @@
 module github.com/aurora-is-near/relayer2-public
 
-go 1.18
+go 1.21
+
+toolchain go1.23.0
 
 //replace github.com/aurora-is-near/relayer2-base => "../relayer2-base"
 //replace github.com/aurora-is-near/near-api-go => github.com/aurora-is-near/near-api-go
@@ -10,18 +12,21 @@ go 1.18
 replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.2
 
 require (
+	github.com/aurora-is-near/borealis-prototypes-go v0.0.0-20240612174445-a1ca8d036252
 	github.com/aurora-is-near/near-api-go v0.0.14
-	github.com/aurora-is-near/relayer2-base v1.1.7
+	github.com/aurora-is-near/relayer2-base v1.1.8
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/ethereum/go-ethereum v1.10.25
-	github.com/google/uuid v1.3.0
+	github.com/fxamacker/cbor/v2 v2.4.0
+	github.com/google/uuid v1.6.0
 	github.com/json-iterator/go v1.1.12
+	github.com/planetscale/vtprotobuf v0.6.0
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/viper v1.13.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.4
 	github.com/valyala/fasthttp v1.47.0
-	golang.org/x/net v0.17.0
+	google.golang.org/grpc v1.65.0
 )
 
 require (
@@ -36,11 +41,11 @@ require (
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fasthttp/websocket v1.5.2 // indirect
-	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/glog v1.0.0 // indirect
+	github.com/golang/glog v1.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v22.9.29+incompatible // indirect
 	github.com/holiman/uint256 v1.2.0 // indirect
@@ -63,38 +68,35 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
+	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 )
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0
-	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tklauser/go-sysconf v0.3.10 // indirect
-	github.com/tklauser/numcpus v0.5.0 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/crypto v0.23.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
