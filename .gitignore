@@ -32,3 +32,4 @@
 relayer2-public
 config/*.json
 config/local.yaml
+config

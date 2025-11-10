@@ -234,7 +234,6 @@ var blocks = []string{`
 type TestItem struct {
 	name        string
 	enabled     bool
-	config      string
 	failMsg     string
 	setup       func(args ...interface{})
 	teardown    func(args ...interface{})
@@ -252,7 +251,6 @@ func TestConfiguration(t *testing.T) {
 		{
 			name:    "fromBlock cannot be smaller than genesis",
 			enabled: true,
-			config:  fromBlockCannotBeSmallerThanGenesisYaml,
 			failMsg: "fromBlock should be equal to Genesis Block",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -263,8 +261,8 @@ func TestConfiguration(t *testing.T) {
 				args[0].(*db.StoreHandler).Close()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
-				return i.c.FromBlock, err
+				i, err := New(args[0].(*db.StoreHandler), nil)
+				return i.(*IndexerRefiner).c.FromBlock, err
 			},
 			want:        uint64(DefaultGenesisBlock),
 			errContains: "",
@@ -272,7 +270,6 @@ func TestConfiguration(t *testing.T) {
 		{
 			name:    "toBlock cannot be greater than fromBlock",
 			enabled: true,
-			config:  toBlockCannotBeGreaterThanFromBlockYml,
 			failMsg: "should have returned nil with invalid config",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -283,7 +280,7 @@ func TestConfiguration(t *testing.T) {
 				args[0].(*db.StoreHandler).Close()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				return New(args[0].(*db.StoreHandler))
+				return New(args[0].(*db.StoreHandler), nil)
 			},
 			want:        nil,
 			errContains: "invalid config",
@@ -291,7 +288,6 @@ func TestConfiguration(t *testing.T) {
 		{
 			name:    "fromBlock cannot be smaller than latest indexed block",
 			enabled: true,
-			config:  fromBlockCannotBeSmallerThanGenesisYaml,
 			failMsg: "fromBlock should be equal latest indexed block",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -303,8 +299,8 @@ func TestConfiguration(t *testing.T) {
 				args[0].(*db.StoreHandler).Close()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
-				return i.c.FromBlock, err
+				i, err := New(args[0].(*db.StoreHandler), nil)
+				return i.(*IndexerRefiner).c.FromBlock, err
 			},
 			want:        uint64(DefaultGenesisBlock+numBlocksToInsert) + 1,
 			errContains: "",
@@ -312,7 +308,6 @@ func TestConfiguration(t *testing.T) {
 		{
 			name:    "fromBlock cannot be smaller than latest indexed block if forceReindex is true",
 			enabled: true,
-			config:  fromBlockCanBeSmallerThanGenesisYaml,
 			failMsg: "fromBlock should be equal latest indexed block",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -324,8 +319,8 @@ func TestConfiguration(t *testing.T) {
 				args[0].(*db.StoreHandler).Close()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
-				return i.c.FromBlock, err
+				i, err := New(args[0].(*db.StoreHandler), nil)
+				return i.(*IndexerRefiner).c.FromBlock, err
 			},
 			want:        uint64(DefaultGenesisBlock),
 			errContains: "",
@@ -343,7 +338,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "read waits indefinitely for new file",
 			enabled: true,
-			config:  waitForFileIndefinitelyYml,
 			failMsg: "read should wait indefinitely for new block file",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -356,7 +350,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				r := read
 				for n := uint8(0); n < i.c.RetryCountOnFailure+1; n++ {
 					r = r(i)
@@ -369,7 +365,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "read stops if retries exceeds RetryCountOnFailure",
 			enabled: true,
-			config:  stopsAfterMaxRetryYml,
 			failMsg: "read should stop after max retry if err type is different than 'file not exists'",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -382,7 +377,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				r := read
 				for n := uint8(0); n < i.c.RetryCountOnFailure+1; n++ {
 					r = r(i)
@@ -395,7 +392,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "read to insert on success",
 			enabled: true,
-			config:  stopsAfterMaxRetryYml,
 			failMsg: "read should return insert on success",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -408,7 +404,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				return nameOfFunc(read(i)), err
 			},
 			want:        nameOfFunc(insert),
@@ -417,7 +415,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "insert to publish on success",
 			enabled: true,
-			config:  stopsAfterMaxRetryYml,
 			failMsg: "insert should return insert on success if keepFiles is true",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -430,7 +427,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				r := read(i)
 				r = r(i)
 				return nameOfFunc(r), err
@@ -441,7 +440,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "publish to increment on success",
 			enabled: true,
-			config:  stopsAfterMaxRetryYml,
 			failMsg: "insert should return insert on success if keepFiles is true",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -454,7 +452,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				r := read(i)
 				r = r(i)
 				r = r(i)
@@ -466,7 +466,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "publish to removeFile on success",
 			enabled: true,
-			config:  removeFilesFoldersYml,
 			failMsg: "insert should return removeFile on success if keepFiles is true",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -479,7 +478,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				r := read(i)
 				r = r(i)
 				r = r(i)
@@ -491,7 +492,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "removeFile to increment if retries exceeds RetryCountOnFailure",
 			enabled: true,
-			config:  removeFilesFoldersYml,
 			failMsg: "removeFile should return increment on failure",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -504,7 +504,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				i.s.filePath = "invalid"
 				r := removeFile
 				for n := uint8(0); n < i.c.RetryCountOnFailure+1; n++ {
@@ -518,7 +520,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "removeFile to increment on success and case0",
 			enabled: true,
-			config:  removeFilesFoldersYml,
 			failMsg: "removeFile should return increment on success",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -531,7 +532,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				return nameOfFunc(removeFile(i)), err
 			},
 			want:        nameOfFunc(increment),
@@ -540,7 +543,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "removeFile to removeFolder on success and case1",
 			enabled: true,
-			config:  removeFilesFoldersYml,
 			failMsg: "removeFile should return removeFolder on success if dir is empty and currBlock is the last block",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -553,7 +555,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				removeFile(i)
 				increment(i)
 				i.s.currBlock = i.s.subBlock + i.s.batchSize - 1
@@ -565,7 +569,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "removeFile to increment on success and case2",
 			enabled: true,
-			config:  removeFilesFoldersYml,
 			failMsg: "removeFile should return removeFolder on success if dir is not empty",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -578,7 +581,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				i.s.currBlock = i.s.subBlock + i.s.batchSize - 1
 				return nameOfFunc(removeFile(i)), err
 			},
@@ -588,7 +593,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "removeFolder to increment on success",
 			enabled: true,
-			config:  removeFilesFoldersYml,
 			failMsg: "removeFolder should return increment on success",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -601,7 +605,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				removeFile(i)
 				increment(i)
 				removeFile(i)
@@ -613,7 +619,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "removeFolder to increment if retries exceeds RetryCountOnFailure",
 			enabled: true,
-			config:  removeFilesFoldersYml,
 			failMsg: "removeFolder should return increment after max retry",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -626,7 +631,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				i.s.subBlockPath = "invalid"
 				r := removeFolder
 				for n := uint8(0); n < i.c.RetryCountOnFailure+1; n++ {
@@ -640,7 +647,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "increment to read on success",
 			enabled: true,
-			config:  removeFilesFoldersYml,
 			failMsg: "increment should return read if toBlock is not specified",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -653,7 +659,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				return nameOfFunc(increment(i)), err
 			},
 			want:        nameOfFunc(read),
@@ -662,7 +670,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "increment stops if toBlock is reached",
 			enabled: true,
-			config:  withToAndFromBlockYml,
 			failMsg: "increment should return stop if toBlock is and reached",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -675,7 +682,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				increment(i)
 				return nameOfFunc(increment(i)), err
 			},
@@ -685,7 +694,6 @@ func TestStateTransitions(t *testing.T) {
 		{
 			name:    "increment continues with latest block if toBlock is reached and forceReindex is true",
 			enabled: true,
-			config:  withToAndFromBlockWithReindexYml,
 			failMsg: "increment should return read if toBlock is reached and forceReindex is true",
 			args:    []interface{}{&sh},
 			setup: func(args ...interface{}) {
@@ -699,7 +707,9 @@ func TestStateTransitions(t *testing.T) {
 				deleteFiles()
 			},
 			call: func(args ...interface{}) (interface{}, error) {
-				i, err := New(args[0].(*db.StoreHandler))
+				ix, err := New(args[0].(*db.StoreHandler), nil)
+				i := ix.(*IndexerRefiner)
+
 				increment(i)
 				return nameOfFunc(increment(i)), err
 			},
@@ -761,15 +771,15 @@ func insertBlocks(sh *db.StoreHandler) {
 	block := &indexer.Block{
 		ChainId:          1313161554,
 		Height:           DefaultGenesisBlock,
-		Hash:             primitives.Data32FromHex("0x0"),
-		ParentHash:       primitives.Data32FromHex("0x0"),
-		TransactionsRoot: primitives.Data32FromHex("0x0"),
-		ReceiptsRoot:     primitives.Data32FromHex("0x0"),
-		StateRoot:        primitives.Data32FromHex("0x0"),
-		Miner:            primitives.Data20FromHex("0x0"),
+		Hash:             primitives.MustData32FromHex("0x0"),
+		ParentHash:       primitives.MustData32FromHex("0x0"),
+		TransactionsRoot: primitives.MustData32FromHex("0x0"),
+		ReceiptsRoot:     primitives.MustData32FromHex("0x0"),
+		StateRoot:        primitives.MustData32FromHex("0x0"),
+		Miner:            primitives.MustData20FromHex("0x0"),
 		GasLimit:         primitives.QuantityFromHex("0x0"),
 		GasUsed:          primitives.QuantityFromHex("0x0"),
-		LogsBloom:        primitives.Data256FromHex("0x0"),
+		LogsBloom:        primitives.MustData256FromHex("0x0"),
 	}
 
 	for i := 0; i < numBlocksToInsert; i++ {
