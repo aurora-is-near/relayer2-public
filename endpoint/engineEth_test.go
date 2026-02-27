@@ -40,10 +40,13 @@ const (
 	contractCallTestOOOMethodData = "0xbb29998e000000000000000000000000f53cC0ef22a093436bb53478b6b3fa8922264a70" // 4 bytes of test methods keccak256 signature -> "test(address)" + address 0xF53cC0eF22a093436BB53478b6B3FA8922264a70 (complete it to 32 bytes)
 
 	txsInvalidNonceStr   = "0xf86d8202fe80825208949d9bd1909550cb8beed9ce7b291dc4dacd85d39d888ac7230489e8000080849c8a82c9a0f17bc4738b358e045850ede1ee86afd8b4cdc58789eda6bf5fe12d2b364e0816a00787a98813e68a58ddcef2cd0b2dd5b90785c32726baa27d3b13e9da299a28cf"
-	txsInvalidRawDataStr = "0xf86d8202fe80825208949d9bd1909550cb8beed9ce7b291dc4dacd85d39d888ac7230489e8000080849c8a82c9a0f17bc4738b358e045850ede1ee86afd8b4cdc58789eda6bf5fe12d2b364e0816a00787a98813e68a58ddcef2cd0b2dd5b90785c32726baa27d3b13e9da299"
-	txsLowGasPriceStr    = "0xf86a820315808259d8949d9bd1909550cb8beed9ce7b291dc4dacd85d39d85e8d4a5100080849c8a82caa09b3661dbc1cdc757d0f566c96e08718033196ef6293962b0a28199494331ba9fa0287398e2db4c3ff130f7beafbcd1ad763df70549724b14db8686fbcf2639b699"
+	txsInvalidRawDataStr = "0xf86d8202fe80825208949d9bd1909550cb8beed9ce7b291dc4dacd85d39d888ac7230489e8000080849c8a82c9a0f17bc4738b358e045850ede1ee86afd8b4cdc58789eda6bf5fe12d2b364e0816a00787a98813e68a58ddcef2cd0b2dd5b90785c32726baa27d3b13e9da29"
 	txsLowGasLimitStr    = "0xf8688203158064949d9bd1909550cb8beed9ce7b291dc4dacd85d39d85e8d4a5100080849c8a82caa02e3db9cf6ca6ef9f164ff537f1894e2fe981c4b65e29bf899da2a08f1fac5df4a023957b8b64c799da9161f47bee9d1b72cb55e5663b54b1b6190f3485c652dd76"
-	timeoutSec           = 60
+
+	// EIP-7702 (Type 4) set code transaction, signed with well-known test key, nonce=999
+	txsType4EIP7702Str = "0x04f8d2844e4541538203e7843b9aca00847735940082c350949d9bd1909550cb8beed9ce7b291dc4dacd85d39d8080c0f860f85e844e4541539470997970c51812dc3a010c7d01b50e0d17dc79c88001a0baa8baf46cad3c2daede7f3777c776258facafaefec9d25b97ab4dac6411afaea064b4f75520bfaa22f70debb8cecc82d889ce88b0f4e760fad80e5b369898554f80a08e3c894dade1f597f3ce319d42e598afbe19fbd7059c36982f6e06ff30eddc32a07b153840755438fa650adffd6578f272ede18d73a6b326ed37e74b08680fad23"
+
+	timeoutSec = 60
 )
 
 const engineEthTestFailYaml1 = `
@@ -63,8 +66,8 @@ endpoint:
   engine:
     nearNetworkID: testnet
     nearNodeURL: https://archival-rpc.testnet.near.org
-    signer: tolgacoplu.testnet
-    SignerKey: /Users/tolgacoplu/.near-credentials/testnet/tolgacoplu.testnet.json
+    signer:
+    signerKey:
     minGasPrice: 0
     minGasLimit: 21000
     gasForNearTxsCall: 300000000000000
@@ -93,8 +96,8 @@ var contractDataCallTooDeep common.DataVec
 var contractDataOutOfOffset common.DataVec
 var txsInvalidNonce common.DataVec
 var txsInvalidRawData common.DataVec
-var txsLowGasPrice common.DataVec
 var txsLowGasLimit common.DataVec
+var txsType4EIP7702 common.DataVec
 
 func initializeStoreHandler() db.Handler {
 	bh, err := badger.NewBlockHandler()
@@ -130,26 +133,26 @@ func TestMain(m *testing.M) {
 	engineNet = NewEngineNet(engineEth)
 
 	// Create from, to, and contract addresses to use in the tests
-	fromAddr = common.HexStringToAddress(fromAddress)
-	toAddr = common.HexStringToAddress(toAddress)
+	fromAddr = common.MustHexStringToAddress(fromAddress)
+	toAddr = common.MustHexStringToAddress(toAddress)
 	gasZero = common.IntToUint256(0)
 	transferVal = common.IntToUint256(transferValue)
 	transferValOOF = common.IntToUint256(transferValueOOF)
-	contractAddr = common.HexStringToAddress(contractAddress)
-	contractAddrStackOverFlow = common.HexStringToAddress(contractAddressStackOverFlow)
-	contractAddrCallTooDeep = common.HexStringToAddress(contractAddressCallTooDeep)
-	contractAddrOutOfOffset = common.HexStringToAddress(contractAddressOutOfOffset)
+	contractAddr = common.MustHexStringToAddress(contractAddress)
+	contractAddrStackOverFlow = common.MustHexStringToAddress(contractAddressStackOverFlow)
+	contractAddrCallTooDeep = common.MustHexStringToAddress(contractAddressCallTooDeep)
+	contractAddrOutOfOffset = common.MustHexStringToAddress(contractAddressOutOfOffset)
 
-	contractData = common.HexStringToDataVec(contractCheckMethodData)
-	contractDataStackOverFlow = common.HexStringToDataVec(contractCallToDeepMethodData)
-	contractDataCallTooDeep = common.HexStringToDataVec(contractCallTestMethodData)
-	contractDataOutOfOffset = common.HexStringToDataVec(contractCallTestOOOMethodData)
-	txsInvalidNonce = common.HexStringToDataVec(txsInvalidNonceStr)
-	txsInvalidRawData = common.HexStringToDataVec(txsInvalidRawDataStr)
-	txsLowGasLimit = common.HexStringToDataVec(txsLowGasLimitStr)
-	txsLowGasPrice = common.HexStringToDataVec(txsLowGasPriceStr)
+	contractData = common.MustHexStringToDataVec(contractCheckMethodData)
+	contractDataStackOverFlow = common.MustHexStringToDataVec(contractCallToDeepMethodData)
+	contractDataCallTooDeep = common.MustHexStringToDataVec(contractCallTestMethodData)
+	contractDataOutOfOffset = common.MustHexStringToDataVec(contractCallTestOOOMethodData)
+	txsInvalidNonce = common.MustHexStringToDataVec(txsInvalidNonceStr)
+	txsInvalidRawData = common.MustHexStringToDataVec(txsInvalidRawDataStr)
+	txsLowGasLimit = common.MustHexStringToDataVec(txsLowGasLimitStr)
+	txsType4EIP7702 = common.MustHexStringToDataVec(txsType4EIP7702Str)
 
-	// If no default provided user the random generated addresses
+	// If no default provided use the random generated addresses
 	if fromAddr.Hex() == zeroAddress {
 		rand.Read(fromAddr.Bytes())
 	}
@@ -160,11 +163,16 @@ func TestMain(m *testing.M) {
 		rand.Read(contractAddr.Bytes())
 	}
 
-	exitVal := m.Run()
-	os.Exit(exitVal)
+	os.Exit(m.Run())
 }
 
 func TestNewEngineEthErrors(t *testing.T) {
+	// Restore original config after test to avoid corrupting global viper state
+	t.Cleanup(func() {
+		if err := viper.ReadConfig(strings.NewReader(engineEthTestYaml)); err != nil {
+			t.Fatalf("failed to restore viper config: %v", err)
+		}
+	})
 	data := []struct {
 		name       string
 		testConfig string
@@ -317,6 +325,7 @@ func TestEthEndpointsStatic(t *testing.T) {
 		{"test sync eth_sendRawTransaction incorrect txs raw data", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidRawData}, false, "value size exceeds available input length"},
 		{"test sync eth_sendRawTransaction low gas limit", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsLowGasLimit}, false, "intrinsic gas too low"},
 		{"test sync eth_sendRawTransaction incorrect nonce", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsInvalidNonce}, false, "ERR_INCORRECT_NONCE"},
+		{"test sync eth_sendRawTransaction type4 EIP-7702 incorrect nonce", "eth_sendRawTransaction", "SendRawTransaction", []interface{}{ctx, txsType4EIP7702}, false, "ERR_INCORRECT_NONCE"},
 		{"test eth_call contract data", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &contractAddr, nil, nil, nil, &contractData), &LatestBlockNumber}, false, "0x0000000000000000000000000000000000000000000000000000000000000005"},
 		{"test eth_call transfer to EOA", "eth_call", "Call", []interface{}{ctx, newTransactionForCall(&fromAddr, &toAddr, nil, nil, &transferVal, nil), &LatestBlockNumber}, false, "0x"},
 		// Needs changes on engine side to be able to run this test properly. Normally, "execution error: Out Of Gas" should be retrieved. Hovewer, since max gas is staticilly applied the result seems to be success
